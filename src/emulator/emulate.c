@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include "dataProcessingImm.h"
 #include "utils.h"
 
 void processor();
@@ -42,12 +43,7 @@ void processor() {
     struct PSTATE stateRegister = { false, false, false, false };
     struct Registers registers = { 0, 0, stateRegister, "" };
 
-    u_int32_t instruction = fetchInstruction(registers.programCounter, "src/add01_exp.bin");
-
-    printf("%d", instruction);
-    registers.programCounter += 4;
-    u_int32_t instruction1 = fetchInstruction(registers.programCounter, "src/add01_exp.bin");
-    printf("%d", instruction1);
+    u_int32_t instruction = fetchInstruction(registers.programCounter, "../add01_exp.bin");
     long long op0 = (instruction >> 25) & 0xF;
 
     if (isDataProcessingImm(op0)) {

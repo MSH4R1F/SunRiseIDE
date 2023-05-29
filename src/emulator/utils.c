@@ -4,8 +4,9 @@
 
 #include "utils.h"
 #include <stdio.h>
+#include <netinet/in.h>
 
-u_int32_t fetchInstruction(long long programCounter, char *filename) {
+uint32_t fetchInstruction(long long programCounter, char *filename) {
     FILE *file = fopen(filename, "rb");  // Open the binary file in read mode
 
     if (file == NULL) {
@@ -30,8 +31,6 @@ u_int32_t fetchInstruction(long long programCounter, char *filename) {
 
     // Convert the value from little-endian to the system's endianness if necessary
     value = ntohl(value);  // Use ntohl() for network-to-host conversion
-
-    printf("Read value: %d\n", value);
 
     fclose(file);  // Close the file
 
