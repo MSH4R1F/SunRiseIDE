@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
+#include "dataProcessingImm.h"
 
 int main(int argc, char **argv) {
   return EXIT_SUCCESS;
@@ -27,12 +28,9 @@ struct Registers {
 // MARK: Fetch-Decode-Execute cycle
 long long fetchInstruction(long long programCounter);
 // decoding
-bool isDataProcessingImm(long long op0);
 bool isDataProcessingReg(long long op0);
 bool isBranch(long long op0);
 // data processing (immediate)
-void executeDataProcessingImm(long long instruction, struct Registers registers);
-
 void executeDataProcessingReg(long long instruction, struct Registers registers);
 void executeBranch(long long instruction, struct Registers registers);
 void executeDataTransfer(long long instruction, struct Registers registers);
