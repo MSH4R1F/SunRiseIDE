@@ -10,8 +10,9 @@ CFLAGS  ?= -std=c17 -g\
 all: assemble emulate
 
 assemble: assemble.o
-emulate: emulate.o dataProcessingImm.o
-dataProcessingIm.o: dataProcessingImm.h
+emulate: emulate.o dataProcessingImm.o utils.o
+dataProcessingIm.o: emulator/dataProcessingImm.h
+test: emulator/utils.h
 
 clean:
 	$(RM) *.o assemble emulate

@@ -7,6 +7,8 @@
 
 //functions
 
+#include <stdbool.h>
+
 bool isDataProcessingImm(long long op0);
 void executeDataProcessingImm(long long instruction, struct Registers registers);
 

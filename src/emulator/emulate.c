@@ -1,9 +1,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
-#include "dataProcessingImm.h"
+#include <stdio.h>
+#include "utils.h"
+
+void processor();
 
 int main(int argc, char **argv) {
-  return EXIT_SUCCESS;
+    processor();
+    return EXIT_SUCCESS;
 }
 
 // MARK: Registers and state
@@ -22,11 +26,10 @@ struct Registers {
     struct PSTATE stateRegister;
 
     // GENERAL
-    char registers[8 * 31];
+    char registers[31*8];
 };
 
 // MARK: Fetch-Decode-Execute cycle
-long long fetchInstruction(long long programCounter);
 // decoding
 bool isDataProcessingReg(long long op0);
 bool isBranch(long long op0);
@@ -39,7 +42,12 @@ void processor() {
     struct PSTATE stateRegister = { false, false, false, false };
     struct Registers registers = { 0, 0, stateRegister, "" };
 
-    long long instruction = fetchInstruction(registers.programCounter);
+    u_int32_t instruction = fetchInstruction(registers.programCounter, "src/add01_exp.bin");
+
+    printf("%d", instruction);
+    registers.programCounter += 4;
+    u_int32_t instruction1 = fetchInstruction(registers.programCounter, "src/add01_exp.bin");
+    printf("%d", instruction1);
     long long op0 = (instruction >> 25) & 0xF;
 
     if (isDataProcessingImm(op0)) {
