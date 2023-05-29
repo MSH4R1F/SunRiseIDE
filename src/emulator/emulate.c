@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include "dataProcessingImm.h"
 #include "utils.h"
+#include "dataProcessingReg.h"
+#include "singleDataTransfer.h"
+#include "branch.h"
 
 void processor();
 
@@ -31,19 +34,12 @@ struct Registers {
 };
 
 // MARK: Fetch-Decode-Execute cycle
-// decoding
-bool isDataProcessingReg(long long op0);
-bool isBranch(long long op0);
-// data processing (immediate)
-void executeDataProcessingReg(long long instruction, struct Registers registers);
-void executeBranch(long long instruction, struct Registers registers);
-void executeDataTransfer(long long instruction, struct Registers registers);
 
 void processor() {
     struct PSTATE stateRegister = { false, false, false, false };
     struct Registers registers = { 0, 0, stateRegister, "" };
 
-    u_int32_t instruction = fetchInstruction(registers.programCounter, "../add01_exp.bin");
+    uint32_t instruction = fetchInstruction(registers.programCounter, "../add01_exp.bin");
     long long op0 = (instruction >> 25) & 0xF;
 
     if (isDataProcessingImm(op0)) {
