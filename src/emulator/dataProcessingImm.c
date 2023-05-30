@@ -48,36 +48,58 @@ void executeArithmeticProcessingImm(long long instruction, struct Registers *reg
         op = op << 12;
     }
 
-    enum DpOpcArithmetic operation = (instruction >> 29) & 0x3;
+    enum DpOpcArithmetic opc = (instruction >> 29) & 0x3;
 
-    long long reg;
-    if (rn == 31) {
-        reg = registers->zeroRegister;
-    } else {
+    long long reg = registers->zeroRegister;
+    if (rn < 31) {
         reg = registers->registers[rn];
     }
 
     long long res;
-    if (operation == ADD || operation == ADDS) {
+    if (opc == ADD || opc == SUB) {
         res = reg + op;
     } else {
         res = reg - op;
     }
 
     // Complete the flags
-    if (operation == ADDS || operation == SUBS) {
-        if (res < 0) {
-            registers->stateRegister.negativeFlag = true;
-        } else if (res == 0) {
-            registers->stateRegister.zeroFlag = true;
-        }
+    if (opc == ADDS || opc == SUBS) {
+        registers->stateRegister.negativeFlag = res < 0;
+        registers->stateRegister.zeroFlag = res == 0;
     }
 
-    if (rn < 31) {
+    if (rd < 31) {
         registers->registers[rd] = res;
     }
 }
 
 void executeWideMoveProcessing(long long instruction, struct Registers *registers) {
+    uint32_t rd = instruction & 0x1F;
+    uint32_t hw = (instruction >> 21) & 0x3;
+    uint64_t imm16 = (instruction >> 5) & 0xFFFF;
 
+    uint32_t shift = hw * 16;
+    uint64_t op = imm16 << shift;
+
+    uint32_t sf = (instruction >> 31);
+
+    enum DpOpcWideMove opc = (instruction >> 29) & 0x3;
+
+    long long res = registers->registers[rd];
+    if (opc == MOVZ) {
+        res = op;
+    } else if (opc == MOVN) {
+        res = ~op;
+    } else {
+        res = res & ~(0xFFFF << shift);
+        res = res | (imm16 << shift);
+    }
+
+    if (sf == 0) {
+        res = res & 0xFFFFFFFF;
+    }
+
+    if (rd < 31) {
+        registers->registers[rd] = res;
+    }
 }

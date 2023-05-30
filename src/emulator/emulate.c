@@ -21,10 +21,10 @@ int main(int argc, char **argv) {
 void processor() {
     struct PSTATE stateRegister = { false, false, false, false };
 
-    uint64_t regs[31*8];
     struct Registers registers;
     registers.programCounter = 0;
     registers.zeroRegister = 0;
+    registers.stateRegister = stateRegister;
 
     uint32_t instruction = fetchInstruction(registers.programCounter, "../add01_exp.bin");
     long long op0 = (instruction >> 25) & 0xF;
