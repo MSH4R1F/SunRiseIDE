@@ -6,6 +6,19 @@
 #include "stdint.h"
 #include "registers.c"
 #include "stdbool.h"
+#include "bitwiseshift.h"
+
+long long shiftFun(uint32_t shift, long long reg, uint32_t operand) {
+    if (shift == 0) {
+        return logicalLeftShift(rm_val, operand);
+    } else if (shift == 1) {
+        return logicalRightShift(rm_val, operand) ;
+    } else if (shift == 2) {
+        return arithmeticRightShift(rm_val, operand);
+    } else {
+        return rotateRight(rm_val, shift);
+    }
+}
 
 void executeDataProcessingReg(uint_32_t instruction, struct Registers *registers) {
     uint_32_t opr = (instruction >> 21) & 0x1F;
@@ -40,19 +53,12 @@ void executeLogicProcessingReg(uint32_t instruction, struct Registers *registers
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t N = (instruction >> 21) & 0x1;
     uint32_t opc = (instruction >> 29) & 0x3;
+    uint32_t operand = (instruction >> 10) & 0x1F;
     uint32_t rn = (instruction >> 5) & 0x1F;
-    long long rn_val = registers->registers[rm];
+    long long rn_val = registers->registers[rn];
     uint32_t rm = (instruction >> 16) & 0x1F;
     long long rm_val = registers->registers[rm];
-    if (shift == 0) {
-        rm_val = ;//lsl(rm_val, shift)
-    } else if (shift == 1) {
-        rm_val = ;//lsr(rm_val, shift)
-    } else if (shift == 2) {
-        rm_val = ;//asr(rm_val, shift)
-    } else {
-        rm_val = ;//ror(rm_val, shift)
-    }
+    rm_val = shiftFun(shift, rm_val, operand)
     uint32_t combined_opc = (opc << 1) + N;
 
     uint32_t rd = instruction & 0x1F;
