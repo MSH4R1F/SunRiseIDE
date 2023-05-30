@@ -9,13 +9,37 @@
 
 long long shiftFun(uint32_t shift, long long reg, uint32_t operand) {
     if (shift == 0) {
-        return logicalLeftShift(rm_val, operand);
+        return logicalLeftShift(reg, operand);
     } else if (shift == 1) {
-        return logicalRightShift(rm_val, operand) ;
+        return logicalRightShift(reg, operand) ;
     } else if (shift == 2) {
-        return arithmeticRightShift(rm_val, operand);
+        return arithmeticRightShift(reg, operand);
     } else {
-        return rotateRight(rm_val, shift);
+        return rotateRight(reg, shift);
+    }
+}
+
+bool overunderflow(long long val1, long long val2, long long result) {
+    bool sign1 = val1 < 0;
+    bool sign2 = val2 < 0;
+    bool signResult = result < 0;
+    if (sign1 == sign2 && sign1 != signResult) {
+        return true;
+    }
+    return false;
+}
+
+bool carry(bool isPlus, bool overunderflow) {
+    if (isPlus) {
+        if (overunderflow) {
+            return 1;
+        }
+        return 0;
+    } else {
+        if (overunderflow) {
+            return 0;
+        }
+        return 1;
     }
 }
 
@@ -40,9 +64,13 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct Registers *regi
     long long rm_val = registers->registers[rm];
     uint32_t opc = (instruction >> 28) & 0x1;
     uint32_t rd = instruction & 0x1F;
-    long long rd_val = 0;
-    long long op2 = shift(shift, rm_val, opr);
-    rd_val = rn_val + (-1**(opc / 2))*op2;
+    long long rd_val;
+    long long op2 = shiftFun(shift, rm_val, opr);
+    int multiplier = -1;
+    if (opc / 2 == 0) {
+        multiplier *= -1;
+    }
+    rd_val = rn_val + multiplier*op2;
     if (opc % 2 == 1) {
         bool V = overunderflow(rn_val, multiplier*op2, rd_val);
         registers->stateRegister.negativeFlag = rd_val < 0;
@@ -55,17 +83,6 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct Registers *regi
 
 
 
-}
-
-bool overunderflow(long long val1, long long val2, long long result) {
-    bool sign1 = val1 < 0;
-    bool sign2 = val2 < 0;
-    bool signResult = result < 0;
-    if (sign1 == sign2 && sign1 != signResult) {
-        return true;
-    }
-    return false
-}
 
 
 void elxecuteLogicProcessingReg(uint32_t instruction, struct Registers *registers) {
@@ -77,7 +94,7 @@ void elxecuteLogicProcessingReg(uint32_t instruction, struct Registers *register
     long long rn_val = registers->registers[rn];
     uint32_t rm = (instruction >> 16) & 0x1F;
     long long rm_val = registers->registers[rm];
-    rm_val = shiftFun(shift, rm_val, operand)
+    rm_val = shiftFun(shift, rm_val, operand);
     uint32_t combined_opc = (opc << 1) + N;
 
     uint32_t rd = instruction & 0x1F;
