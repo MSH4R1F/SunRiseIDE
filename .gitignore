@@ -33,3 +33,5 @@ assemble
 *.nav
 *.toc
 
+#ignore cbuild files
+**/.cbuild
