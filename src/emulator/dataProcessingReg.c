@@ -3,7 +3,6 @@
 //
 
 #include "dataProcessingReg.h"
-#include "stdint.h"
 #include "registers.c"
 #include "stdbool.h"
 #include "bitwiseshift.h"
@@ -45,10 +44,10 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct Registers *regi
     long long op2 = shift(shift, rm_val, opr);
     rd_val = rn_val + (-1**(opc / 2))*op2;
     if (opc % 2 == 1) {
-        bool V = overunderflow(rn_val, (-1**(opc / 2))*op2, rd_val);
+        bool V = overunderflow(rn_val, multiplier*op2, rd_val);
         registers->stateRegister.negativeFlag = rd_val < 0;
         registers->stateRegister.zeroFlag = rd_val == 0;
-        registers->stateRegister.carryFlag = carry((-1**(opc / 2)) == 1, V);
+        registers->stateRegister.carryFlag = carry(multiplier == 1, V);
         registers->stateRegister.overflowFlag = V;
     }
     registers->registers[rd] = rd_val;
@@ -69,7 +68,7 @@ bool overunderflow(long long val1, long long val2, long long result) {
 }
 
 
-void executeLogicProcessingReg(uint32_t instruction, struct Registers *registers) {
+void elxecuteLogicProcessingReg(uint32_t instruction, struct Registers *registers) {
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t N = (instruction >> 21) & 0x1;
     uint32_t opc = (instruction >> 29) & 0x3;
