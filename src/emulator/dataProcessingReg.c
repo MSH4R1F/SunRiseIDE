@@ -41,7 +41,7 @@ void executeArithmeticProcessingReg(uint_32_t instruction, struct Registers *reg
     long long rm_val = registers->registers[rm];
     uint32_t opc = (instruction >> 28) & 0x1;
     uint32_t rd = instruction & 0x1F;
-    uint64_t rd_val = 0;
+    long long t rd_val = 0;
     long long op2 = shift(shift, rm_val, opr);
     rd_val = rn_val + (-1**(opc / 2))*op2;
     if (opc % 2 == 1) {
