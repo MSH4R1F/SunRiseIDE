@@ -34,18 +34,33 @@ void executeDataProcessingReg(uint_32_t instruction, struct Registers *registers
 
 void executeArithmeticProcessingReg(uint_32_t instruction, struct Registers *registers) {
     uint32_t shift = (instruction >> 22) & 0x3;
+    uint32_t opr = (instruction >> 10) & 0x1F;
     uint32_t rn = (instruction >> 4) & 0x1F;
-    uint32_t rn_val registers->registers[rn]
+    long long rn_val registers->registers[rn]
     uint32_t rm = (instruction >> 16) & 0x1F;
-    uint64_t rm_val = registers->registers[rm];
+    long long rm_val = registers->registers[rm];
     uint32_t opc = (instruction >> 28) & 0x1;
     uint32_t rd = instruction & 0x1F;
     uint64_t rd_val = 0;
-    op2 = shift(shift);
+    long long op2 = shift(shift, rm_val, opr);
     rd_val = rn_val + (-1**(opc / 2))*op2;
     if (opc % 2 == 1) {
-
+        registers->stateRegister.negativeFlag = rd_val < 0;
+        registers->stateRegister.zeroFlag = rd_val == 0;
+        registers->stateRegister.carryFlag = true;
+        registers->stateRegister.overflowFlag = overunderflow(rn_val, (-1**(opc / 2))*op2), rd_val;
     }
+    registers->registers[rd] = rd_val;
+}
+
+bool overunderflow(long long val1, long long val2, long long result) {
+    bool sign1 = val1 < 0;
+    bool sign2 = val2 < 0;
+    bool signResult = result < 0;
+    if (sign1 == sign2 && sign1 != signResult) {
+        return true;
+    }
+    return false
 }
 
 
