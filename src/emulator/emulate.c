@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "dataProcessingImm.h"
-#include "utils.h"
-#include "dataProcessingReg.h"
-#include "singleDataTransfer.h"
-#include "branch.h"
+
+#include "utils.c"
+#include "dataProcessingImm.c"
+#include "dataProcessingReg.c"
+#include "singleDataTransfer.c"
+#include "branch.c"
+#include "registers.c"
 
 void processor();
 
@@ -14,36 +16,21 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
-// MARK: Registers and state
-
-struct PSTATE {
-    bool negativeFlag;
-    bool zeroFlag;
-    bool carryFlag;
-    bool overflowFlag;
-};
-
-struct Registers {
-    // SPECIAL
-    long long zeroRegister;
-    long long programCounter;
-    struct PSTATE stateRegister;
-
-    // GENERAL
-    char registers[31*8];
-};
-
 // MARK: Fetch-Decode-Execute cycle
 
 void processor() {
     struct PSTATE stateRegister = { false, false, false, false };
-    struct Registers registers = { 0, 0, stateRegister, "" };
+
+    uint64_t regs[31*8];
+    struct Registers registers;
+    registers.programCounter = 0;
+    registers.zeroRegister = 0;
 
     uint32_t instruction = fetchInstruction(registers.programCounter, "../add01_exp.bin");
     long long op0 = (instruction >> 25) & 0xF;
 
     if (isDataProcessingImm(op0)) {
-        executeDataProcessingImm(instruction, registers);
+        executeDataProcessingImm(instruction, &registers);
     } else if (isDataProcessingReg(op0)) {
         executeDataProcessingReg(instruction, registers);
     } else if (isBranch(op0)) {
@@ -54,20 +41,6 @@ void processor() {
 }
 
 // MARK: Data Processing Instruction (immediate)
-
-enum DpOpcArithmetic {
-    ADD,
-    ADDS,
-    SUB,
-    SUBS
-};
-
-enum DpOpcWideMove {
-    MOVZ,
-    INVALID,
-    MOVN,
-    MOVK
-};
 
 enum ShiftOP {
     LSL,
