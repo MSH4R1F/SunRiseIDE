@@ -30,7 +30,7 @@ struct Registers {
     struct PSTATE stateRegister;
 
     // GENERAL
-    char registers[31*8];
+    long long registers[31*8];
 };
 
 // MARK: Fetch-Decode-Execute cycle
