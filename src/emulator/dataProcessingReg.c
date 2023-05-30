@@ -45,12 +45,28 @@ void executeArithmeticProcessingReg(uint_32_t instruction, struct Registers *reg
     long long op2 = shift(shift, rm_val, opr);
     rd_val = rn_val + (-1**(opc / 2))*op2;
     if (opc % 2 == 1) {
+        bool V = overunderflow(rn_val, (-1**(opc / 2))*op2, rd_val);
         registers->stateRegister.negativeFlag = rd_val < 0;
         registers->stateRegister.zeroFlag = rd_val == 0;
-        registers->stateRegister.carryFlag = true;
-        registers->stateRegister.overflowFlag = overunderflow(rn_val, (-1**(opc / 2))*op2), rd_val;
+        registers->stateRegister.carryFlag = carry((-1**(opc / 2)) == 1, V);
+        registers->stateRegister.overflowFlag = V;
     }
     registers->registers[rd] = rd_val;
+}
+
+bool carry(bool isPlus, bool overunderflow) {
+    if (isPlus) {
+        if (overunderflow) {
+            return 1;
+        }
+        return 0;
+    } else {
+        if (overunderflow) {
+            return 0;
+        }
+        return 1;
+    }
+
 }
 
 bool overunderflow(long long val1, long long val2, long long result) {
