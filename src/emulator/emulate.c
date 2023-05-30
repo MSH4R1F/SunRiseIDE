@@ -7,7 +7,7 @@
 #include "dataProcessingReg.c"
 #include "singleDataTransfer.c"
 #include "branch.c"
-#include "registers.c"
+#include "registers.h"
 
 void processor();
 
@@ -32,7 +32,7 @@ void processor() {
     if (isDataProcessingImm(op0)) {
         executeDataProcessingImm(instruction, &registers);
     } else if (isDataProcessingReg(op0)) {
-        executeDataProcessingReg(instruction, registers);
+        executeDataProcessingReg(instruction, &registers);
     } else if (isBranch(op0)) {
         executeBranch(instruction, registers);
     } else {
