@@ -81,15 +81,15 @@ void executeLogicProcessingReg(uint32_t instruction, struct Registers *registers
                 rd_val = rn_val & rm_val;
                 registers->stateRegister.negativeFlag = rd_val < 0;
                 registers->stateRegister.zeroFlag = rd_val == 0;
-                registers->stateRegister.carryFlag = true;
-                registers->stateRegister.overflowFlag = true;
+                registers->stateRegister.carryFlag = false;
+                registers->stateRegister.overflowFlag = false;
                 break;
             case 7:
                 rd_val = rn_val & ~rm_val;
                 registers->stateRegister.negativeFlag = rd_val < 0;
                 registers->stateRegister.zeroFlag = rd_val == 0;
-                registers->stateRegister.carryFlag = true;
-                registers->stateRegister.overflowFlag = true;
+                registers->stateRegister.carryFlag = false;
+                registers->stateRegister.overflowFlag = false;
                 break;
         }
         registers->registers[rd] = rd_val;
