@@ -50,6 +50,10 @@ void executeArithmeticProcessingImm(long long instruction, struct Registers *reg
 
     enum DpOpcArithmetic opc = (instruction >> 29) & 0x3;
 
+    bool setsFlags = opc == ADDS || opc == SUBS;
+    if (rn == 31 && setsFlags) {
+        return;
+    }
     long long reg = registers->zeroRegister;
     if (rn < 31) {
         reg = registers->registers[rn];
@@ -63,7 +67,7 @@ void executeArithmeticProcessingImm(long long instruction, struct Registers *reg
     }
 
     // Complete the flags
-    if (opc == ADDS || opc == SUBS) {
+    if (setsFlags) {
         registers->stateRegister.negativeFlag = res < 0;
         registers->stateRegister.zeroFlag = res == 0;
     }
