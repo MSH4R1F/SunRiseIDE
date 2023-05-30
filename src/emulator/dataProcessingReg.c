@@ -20,23 +20,23 @@ long long shiftFun(uint32_t shift, long long reg, uint32_t operand) {
     }
 }
 
-void executeDataProcessingReg(uint_32_t instruction, struct Registers *registers) {
-    uint_32_t opr = (instruction >> 21) & 0x1F;
-    uint_32_t first2 = (opr >> 3);
+void executeDataProcessingReg(uint32_t instruction, struct Registers *registers) {
+    uint32_t opr = (instruction >> 21) & 0x1F;
+    uint32_t first2 = (opr >> 3);
     if (first2 == 1) {
-        executeArithmeticProcessingReg(instruction, *registers);
+        executeArithmeticProcessingReg(instruction, registers);
     } else if (first2 == 0) {
-        executeLogicProcessingReg(instruction, *registers);
+        executeLogicProcessingReg(instruction, registers);
     } else {
-        executeMultiplyProcessingReg(instruction, *registers);
+        executeMultiplyProcessingReg(instruction, registers);
     }
 }
 
-void executeArithmeticProcessingReg(uint_32_t instruction, struct Registers *registers) {
+void executeArithmeticProcessingReg(uint32_t instruction, struct Registers *registers) {
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t opr = (instruction >> 10) & 0x1F;
     uint32_t rn = (instruction >> 4) & 0x1F;
-    long long rn_val registers->registers[rn]
+    long long rn_val = registers->registers[rn];
     uint32_t rm = (instruction >> 16) & 0x1F;
     long long rm_val = registers->registers[rm];
     uint32_t opc = (instruction >> 28) & 0x1;
@@ -54,18 +54,7 @@ void executeArithmeticProcessingReg(uint_32_t instruction, struct Registers *reg
     registers->registers[rd] = rd_val;
 }
 
-bool carry(bool isPlus, bool overunderflow) {
-    if (isPlus) {
-        if (overunderflow) {
-            return 1;
-        }
-        return 0;
-    } else {
-        if (overunderflow) {
-            return 0;
-        }
-        return 1;
-    }
+
 
 }
 
