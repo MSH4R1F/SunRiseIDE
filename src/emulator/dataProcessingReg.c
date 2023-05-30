@@ -79,25 +79,20 @@ void executeLogicProcessingReg(uint32_t instruction, struct Registers *registers
                 break;
             case 6:
                 rd_val = rn_val & rm_val;
-                if (rd_val < 0) {
-                    registers->stateRegister.negativeFlag = true;
-                } if (rd_val == 0) {
-                    registers->stateRegister.zeroFlag = true;
-                }
+                registers->stateRegister.negativeFlag = rd_val < 0;
+                registers->stateRegister.zeroFlag = rd_val == 0;
                 registers->stateRegister.carryFlag = true;
                 registers->stateRegister.overflowFlag = true;
                 break;
             case 7:
                 rd_val = rn_val & ~rm_val;
-                if (rd_val < 0) {
-                    registers->stateRegister.negativeFlag = true;
-                } if (rd_val == 0) {
-                    registers->stateRegister.zeroFlag = true;
-                }
+                registers->stateRegister.negativeFlag = rd_val < 0;
+                registers->stateRegister.zeroFlag = rd_val == 0;
                 registers->stateRegister.carryFlag = true;
                 registers->stateRegister.overflowFlag = true;
                 break;
         }
+        registers->registers[rd] = rd_val;
     }
 }
 
