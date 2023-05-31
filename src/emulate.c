@@ -56,7 +56,7 @@ uint32_t fetchInstruction(long long programCounter, char *filename) {
 
     if (file == NULL) {
         printf("Failed to open the file.\n");
-        return 1;
+        return 0;
     }
 
     uint32_t value;  // Variable to store the read integer
@@ -64,14 +64,14 @@ uint32_t fetchInstruction(long long programCounter, char *filename) {
     if (fseek(file, programCounter, SEEK_SET) != 0) {
         printf("Failed to seek to the desired position.\n");
         fclose(file);
-        return 1;
+        return 0;
     }
 
     // Read 4 bytes from the file into the variable 'value'
     if (fread(&value, sizeof(value), 1, file) != 1) {
         printf("Failed to read from the file.\n");
         fclose(file);
-        return 1;
+        return 0;
     }
 
     // Convert the value from little-endian to the system's endianness if necessary
@@ -405,7 +405,7 @@ void executeBranch(long long instruction, struct Registers *registers) {
 
 // MARK: Fetch-Decode-Execute cycle
 
-void processor() {
+void processor(char *filename) {
     struct PSTATE stateRegister = { false, false, false, false };
 
     struct Registers registers;
@@ -417,11 +417,11 @@ void processor() {
     }
 
     while (true) {
-        uint32_t instruction = fetchInstruction(registers.programCounter, "src/add02_exp.bin");
+        uint32_t instruction = fetchInstruction(registers.programCounter, filename);
         printf("%ud\n", instruction);
         long long op0 = (instruction >> 25) & 0xF;
 
-        if (instruction == 0x8a000000) {
+        if (instruction == 0x8a000000 || instruction == 0) {
             break;
         }
 
