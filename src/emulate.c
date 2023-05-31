@@ -447,6 +447,6 @@ void processor(char *filename) {
 }
 
 int main(int argc, char **argv) {
-    processor();
+    processor("src/add01_exp.bin");
     return EXIT_SUCCESS;
 }
