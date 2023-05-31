@@ -143,9 +143,9 @@ enum DpOpcArithmetic {
 };
 
 enum DpOpcWideMove {
-    MOVZ,
-    INVALID,
     MOVN,
+    INVALID,
+    MOVZ,
     MOVK
 };
 
@@ -208,26 +208,33 @@ void executeArithmeticProcessingImm(long long instruction, struct Registers *reg
 }
 
 void executeWideMoveProcessing(long long instruction, struct Registers *registers) {
+    printf("executed wide move\n");
     uint32_t rd = instruction & 0x1F;
     uint32_t hw = (instruction >> 21) & 0x3;
     uint64_t imm16 = (instruction >> 5) & 0xFFFF;
+    printf("printing imm16: %llu\n", imm16);
 
     uint32_t shift = hw * 16;
     uint64_t op = imm16 << shift;
-
+    printf("printing op: %llu\n", op);
     uint32_t sf = (instruction >> 31);
 
     enum DpOpcWideMove opc = (instruction >> 29) & 0x3;
+    if (opc == 2) {
+        printf("correctly decoded opcode\n");
+    }
 
     long long res = registers->registers[rd];
+    printf("%lld\n", res);
     if (opc == MOVZ) {
         res = op;
     } else if (opc == MOVN) {
         res = ~op;
     } else {
         res = res & ~(0xFFFF << shift);
-        res = res | (imm16 << shift);
+        res = res | op;
     }
+    printf("%lld\n", res);
 
     if (sf == 0) {
         res = res & 0xFFFFFFFF;
@@ -282,11 +289,13 @@ bool carry(bool isPlus, bool overunderflow) {
 }
 
 void executeDataProcessingReg(uint32_t instruction, struct Registers *registers) {
-    uint32_t opr = (instruction >> 21) & 0x1F;
-    uint32_t first2 = (opr >> 3);
-    if (first2 == 1) {
+    printf("DataProcessing called\n");
+    uint32_t opr = (instruction >> 21) & 0xF;
+    uint32_t m = (instruction >> 28) & 0x1;
+    uint32_t check = (opr >> 3) + (2*m);
+    if (check == 1) {
         executeArithmeticProcessingReg(instruction, registers);
-    } else if (first2 == 0) {
+    } else if (check == 0) {
         executeLogicProcessingReg(instruction, registers);
     } else {
         executeMultiplyProcessingReg(instruction, registers);
@@ -294,13 +303,14 @@ void executeDataProcessingReg(uint32_t instruction, struct Registers *registers)
 }
 
 void executeArithmeticProcessingReg(uint32_t instruction, struct Registers *registers) {
+    printf("ArithmeticProcessing called\n");
     uint32_t shift = (instruction >> 22) & 0x3;
-    uint32_t opr = (instruction >> 10) & 0x1F;
-    uint32_t rn = (instruction >> 4) & 0x1F;
+    uint32_t opr = (instruction >> 11) & 0x1F;
+    uint32_t rn = (instruction >> 5) & 0x1F;
     long long rn_val = registers->registers[rn];
     uint32_t rm = (instruction >> 16) & 0x1F;
     long long rm_val = registers->registers[rm];
-    uint32_t opc = (instruction >> 28) & 0x1;
+    uint32_t opc = (instruction >> 29) & 0x1;
     uint32_t rd = instruction & 0x1F;
     long long rd_val;
     long long op2 = shiftFun(shift, rm_val, opr);
@@ -372,7 +382,9 @@ void executeLogicProcessingReg(uint32_t instruction, struct Registers *registers
     }
 }
 
-void executeMultiplyProcessingReg(uint32_t instruction, struct Registers *registers) {}
+void executeMultiplyProcessingReg(uint32_t instruction, struct Registers *registers) {
+    printf("MultiplyProcessing called");
+}
 
 // MARK: singleDataTransfer.c
 
@@ -404,19 +416,33 @@ void processor() {
         registers.registers[i] = 0;
     }
 
-    uint32_t instruction = fetchInstruction(registers.programCounter, "src/add01_exp.bin");
-    printf("%ud\n", instruction);
-    long long op0 = (instruction >> 25) & 0xF;
+    while (true) {
+        uint32_t instruction = fetchInstruction(registers.programCounter, "src/add02_exp.bin");
+        printf("%ud\n", instruction);
+        long long op0 = (instruction >> 25) & 0xF;
 
-    if (isDataProcessingImm(op0)) {
-        executeDataProcessingImm(instruction, &registers);
-        printf("Register 1: %lld", registers.registers[1]);
-    } else if (isDataProcessingReg(op0)) {
-        executeDataProcessingReg(instruction, &registers);
-    } else if (isBranch(op0)) {
-        executeBranch(instruction, &registers);
-    } else {
-        executeDataTransfer(instruction, &registers);
+        if (instruction == 0x8a000000) {
+            break;
+        }
+
+        registers.programCounter += 4;
+
+        if (isDataProcessingImm(op0)) {
+            executeDataProcessingImm(instruction, &registers);
+        } else if (isDataProcessingReg(op0)) {
+            executeDataProcessingReg(instruction, &registers);
+        } else if (isBranch(op0)) {
+            executeBranch(instruction, &registers);
+        } else {
+            executeDataTransfer(instruction, &registers);
+        }
+    }
+
+    for (int i = 0; i < sizeof(registers.registers) / sizeof(registers.registers[0]); i++) {
+        long long res = registers.registers[i];
+        if (res != 0) {
+            printf("r%d = %lld\n", i, registers.registers[i]);
+        }
     }
 }
 
