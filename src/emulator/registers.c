@@ -7,17 +7,17 @@
 
 
 struct PSTATE {
-    bool negativeFlag;
-    bool zeroFlag;
-    bool carryFlag;
-    bool overflowFlag;
+    bool negativeFlag; // N
+    bool zeroFlag; // Z
+    bool carryFlag; // C
+    bool overflowFlag; // V
 };
 
 struct Registers {
     // SPECIAL
     long long zeroRegister;
     long long programCounter;
-    struct PSTATE stateRegister;
+    struct PSTATE* stateRegister;
 
     // GENERAL
     long long registers[31];

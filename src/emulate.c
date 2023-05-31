@@ -399,10 +399,7 @@ bool isBranch(long long op0) {
     return (op0 | 0x1) == match;
 }
 
-void executeBranch(long long instruction, struct Registers *registers) {
-
-}
-
+void executeBranch(long long instruction, struct Registers *registers);
 // MARK: Fetch-Decode-Execute cycle
 
 void processor(char *filename) {
