@@ -30,7 +30,7 @@ void executeWideMoveProcessing(long long instruction, struct Registers *register
 
 // FILE: dataProcessingReg.h
 
-bool isDataProcessingReg(uint32_t op0);
+bool isDataProcessingReg(long long op0);
 
 void executeDataProcessingReg(uint32_t instruction, struct Registers *registers);
 
@@ -238,6 +238,11 @@ void executeWideMoveProcessing(long long instruction, struct Registers *register
 
 // FILE: dataProcessingReg.c
 
+bool isDataProcessingReg(long long op0) {
+    long long match = 0xD;
+    return (op0 | 0x8) == match;
+}
+
 long long shiftFun(uint32_t shift, long long reg, uint32_t operand) {
     if (shift == 0) {
         return logicalLeftShift(reg, operand);
@@ -367,6 +372,23 @@ void executeLogicProcessingReg(uint32_t instruction, struct Registers *registers
 
 void executeMultiplyProcessingReg(uint32_t instruction, struct Registers *registers) {}
 
+// MARK: singleDataTransfer.c
+
+void executeDataTransfer(long long instruction, struct Registers *registers) {
+
+}
+
+// MARK: branch.c
+
+bool isBranch(long long op0) {
+    long long match = 0xB;
+    return (op0 | 0x1) == match;
+}
+
+void executeBranch(long long instruction, struct Registers *registers) {
+
+}
+
 // MARK: Fetch-Decode-Execute cycle
 
 void processor() {
@@ -377,7 +399,8 @@ void processor() {
     registers.zeroRegister = 0;
     registers.stateRegister = stateRegister;
 
-    uint32_t instruction = fetchInstruction(registers.programCounter, "add01_exp.bin");
+    uint32_t instruction = fetchInstruction(registers.programCounter, "src/add01_exp.bin");
+    printf("%ud", instruction);
     long long op0 = (instruction >> 25) & 0xF;
 
     if (isDataProcessingImm(op0)) {
