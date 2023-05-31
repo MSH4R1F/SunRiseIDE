@@ -404,8 +404,48 @@ void executeMultiplyProcessingReg(uint32_t instruction, struct Registers *regist
 }
 // MARK: singleDataTransfer.c
 
-void executeDataTransfer(long long instruction, struct Registers *registers) {
 
+void unsignedOffset(long long instruction, struct Registers *registers) {
+    uint64_t xn = (instruction >> 5) & 0x1F;
+    uint64_t imm12 = (instruction >> 10) & 0x7FF;
+    uint64_t address = xn + imm12;
+    long long value = registers->registers[address];
+
+}
+
+void preAndPostIndex(long long instruction, struct Registers *registers) {
+    uint32_t xn = (instruction >> 5) & 0x1F;
+    long long xn_value = registers->registers[xn];
+    uint32_t simm9 = (instruction >> 12) & 0x1FF;
+    long long simm9_value = registers->registers[simm9];
+    long long address = simm9_value + xn_value;
+    if (((instruction >> 11) & 1) == 0x1) {
+        registers->registers[address] = address;
+    } else {
+        registers->registers[xn] = address;
+    }
+}
+
+
+void regOffset(long long instruction, struct Registers *registers) {
+
+}
+
+void literal(long long instruction, struct Registers *registers) {
+
+}
+
+void executeDataTransfer(long long instruction, struct Registers *registers) {
+    if (instruction >> 31 == 1) {
+        literal(instruction, registers);
+    }
+    if (((instruction >> 24) & 1) == 1) {
+        unsignedOffset(instruction, registers);
+    } else if (instruction >> 21 == 1) {
+        regOffset(instruction, registers);
+    } else {
+        preAndPostIndex(instruction, registers);
+    }
 }
 
 // MARK: branch.c
