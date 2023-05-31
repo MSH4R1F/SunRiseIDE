@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <netinet/in.h>
 
 // FILE: utils.h
 
@@ -400,7 +402,7 @@ void processor() {
     registers.stateRegister = stateRegister;
 
     uint32_t instruction = fetchInstruction(registers.programCounter, "src/add01_exp.bin");
-    printf("%ud", instruction);
+    printf("%ud\n", instruction);
     long long op0 = (instruction >> 25) & 0xF;
 
     if (isDataProcessingImm(op0)) {
