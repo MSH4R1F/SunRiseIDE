@@ -75,7 +75,7 @@ uint32_t fetchInstruction(long long programCounter, char *filename) {
     }
 
     // Convert the value from little-endian to the system's endianness if necessary
-    value = ntohl(value);  // Use ntohl() for network-to-host conversion
+    //value = ntohl(value);  // Use ntohl() for network-to-host conversion
 
     fclose(file);  // Close the file
 
@@ -400,6 +400,9 @@ void processor() {
     registers.programCounter = 0;
     registers.zeroRegister = 0;
     registers.stateRegister = stateRegister;
+    for (int i = 0; i < sizeof(registers.registers) / sizeof(registers.registers[0]); i++) {
+        registers.registers[i] = 0;
+    }
 
     uint32_t instruction = fetchInstruction(registers.programCounter, "src/add01_exp.bin");
     printf("%ud\n", instruction);
@@ -407,6 +410,7 @@ void processor() {
 
     if (isDataProcessingImm(op0)) {
         executeDataProcessingImm(instruction, &registers);
+        printf("Register 1: %lld", registers.registers[1]);
     } else if (isDataProcessingReg(op0)) {
         executeDataProcessingReg(instruction, &registers);
     } else if (isBranch(op0)) {
