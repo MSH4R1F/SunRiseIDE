@@ -7,16 +7,16 @@
 
 // CONSTANTS
 
-#define MEMORY_CAPACITY 131072
-
-// FILE: utils.h
-
-void loadMemory(uint32_t *memPointer, char *filename);
+#define MEMORY_COUNT 131072
 
 // FILE: registers.h
 
 struct PSTATE;
 struct RegisterStore;
+
+// FILE: utils.h
+
+void loadMemoryFromFile(uint32_t *memPointer, char *filename);
 
 // FILE: bitwiseshift.h
 
@@ -47,22 +47,80 @@ void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *re
 
 // FILE: singleDataTransfer.h
 
-void executeDataTransfer(long long instruction, struct RegisterStore *registers);
+void executeDataTransfer(long long instruction, uint32_t *memPointer, struct RegisterStore *registers);
 
 // FILE: branch.h
 
 bool isBranch(long long op0);
 void executeBranch(long long instruction, struct RegisterStore *registers);
 
+// FILE: registers.c
+
+struct PSTATE {
+    bool negativeFlag;
+    bool zeroFlag;
+    bool carryFlag;
+    bool overflowFlag;
+};
+
+struct RegisterStore {
+    // SPECIAL
+    long long zeroRegister;
+    long long programCounter;
+    struct PSTATE stateRegister;
+
+    // GENERAL
+    long long registers[31];
+};
+
 // FILE: utils.c
 
+uint32_t fetchInstruction(long long address, uint32_t *memPointer) {
+    return memPointer[address / 4];
+}
+
+long long fetchData(long long address, uint32_t *memPointer, bool isDoubleWord) {
+    long long data;
+    if (isDoubleWord) {
+        assert(address % 8 == 0);
+
+        uint32_t lsbWord = memPointer[address / 4];
+        uint32_t msbWord = memPointer[address / 4 + 1];
+        data = (msbWord << 32) | lsbWord;
+    } else {
+        uint32_t word = memPointer[address / 4];
+        data = word;
+        if (word & 0x80000000) {
+            data = word | (0xFFFFFFFF << 32);
+        }
+    }
+
+    return data;
+}
+
+void storeData(long long data, long long address, uint32_t *memPointer, bool isDoubleWord) {
+    if (isDoubleWord) {
+        assert(address % 8 == 0); //  ensures request is segmented
+
+        uint32_t lsbWord = data & 0xFFFFFFFF;
+        uint32_t msbWord = (data ^ lsbWord) >> 32;
+
+        memPointer[address / 4] = lsbWord;
+        memPointer[address / 4 + 1] = msbWord;
+    } else {
+        uint32_t word = data;
+
+        memPointer[address / 4] = word;
+    }
+}
+
 uint32_t *allocateMemory(void) {
-    uint32_t *memPointer = calloc(MEMORY_CAPACITY, sizeof(uint32_t));
+    uint32_t *memPointer = calloc(MEMORY_COUNT, sizeof(uint32_t));
     assert( memPointer != NULL );
     return memPointer;
 }
 
-void loadMemory(uint32_t *memPointer, char *filename) {
+void loadMemoryFromFile(uint32_t *memPointer, char *filename) {
     int counter = 0;
     FILE *file = fopen(filename, "rb");  // Open the binary file in read mode
 
@@ -94,24 +152,26 @@ void loadMemory(uint32_t *memPointer, char *filename) {
     }
 }
 
-// FILE: registers.c
-
-struct PSTATE {
-    bool negativeFlag;
-    bool zeroFlag;
-    bool carryFlag;
-    bool overflowFlag;
-};
-
-struct RegisterStore {
-    // SPECIAL
-    long long zeroRegister;
-    long long programCounter;
-    struct PSTATE stateRegister;
-
-    // GENERAL
-    long long registers[31];
-};
+void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister,uint32_t *memPointer, char *filename) {
+    FILE *fp;
+    fp = fopen(filename, "w");// "w" means that we are going to write on this file
+    for (int i = 0; i < 31; i++) {
+        fprintf(fp, "X%02d    = %016lld\n", i, registers->registers[i]);
+    }
+    fprintf(fp, "PC     = %016llx\n", registers->programCounter);
+    char n_val = stateRegister->negativeFlag == true ? 'N' : '-';
+    char z_val = stateRegister->zeroFlag == true ? 'Z' : '-';
+    char c_val = stateRegister->carryFlag == true ? 'C' : '-';
+    char v_val = stateRegister->overflowFlag == true ? 'V' : '-';
+    fprintf(fp, "PSTATE : %c%c%c%c\n", n_val, z_val, c_val, v_val);
+    fprintf(fp, "Non-Zero Memory:\n");
+    uint32_t memAddress = 0;
+    while (memPointer[memAddress] != 0) {
+        fprintf(fp, "0X%08x : %08x\n", memAddress * 4, memPointer[memAddress]);
+        memAddress++;
+    }
+    fclose(fp); //Don't forget to close the file when finished
+}
 
 // FILE: bitwiseshift.c
 
@@ -299,17 +359,6 @@ bool overunderflow(long long val1, long long val2, long long result) {
 
 bool carry(bool isPlus, bool overunderflow) {
     return isPlus == overunderflow;
-//    if (isPlus) {
-//        if (overunderflow) {
-//            return 1;
-//        }
-//        return 0;
-//    } else {
-//        if (overunderflow) {
-//            return 0;
-//        }
-//        return 1;
-//    }
 }
 
 void executeDataProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
@@ -422,8 +471,25 @@ void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *re
     long long rd_val = ra_val + x * (rn_val * rm_val);
     registers->registers[rd] = rd_val;
 }
+
 // MARK: singleDataTransfer.c
 
+void loadStore(bool forceLoad, long long instruction, long long readAddress, uint32_t *memPointer, struct RegisterStore *registerStore) {
+    bool isLoad;
+    if (forceLoad) {
+        isLoad = true;
+    } else {
+        isLoad = (instruction >> 22) & 0x1;
+    }
+    bool isDoubleWord = (instruction >> 30) & 0x1;
+    uint32_t rt = instruction & 0x1F;
+
+    if (isLoad) {
+        registerStore->registers[rt] = fetchData(readAddress, memPointer, isDoubleWord);
+    } else {
+        storeData(registerStore->registers[rt], readAddress, memPointer, isDoubleWord);
+    }
+}
 
 void unsignedOffset(long long instruction, struct RegisterStore *registers) {
     uint64_t xn = (instruction >> 5) & 0x1F;
@@ -433,38 +499,56 @@ void unsignedOffset(long long instruction, struct RegisterStore *registers) {
 
 }
 
-void preAndPostIndex(long long instruction, struct RegisterStore *registers) {
+void preAndPostIndex(long long instruction, uint32_t *memPointer, struct RegisterStore *registers) {
     uint32_t xn = (instruction >> 5) & 0x1F;
-    long long xn_value = registers->registers[xn];
-    uint32_t simm9 = (instruction >> 12) & 0x1FF;
-    long long simm9_value = registers->registers[simm9];
-    long long address = simm9_value + xn_value;
-    if (((instruction >> 11) & 1) == 0x1) {
-        registers->registers[address] = address;
-    } else {
-        registers->registers[xn] = address;
-    }
-}
+    long long xnValue = registers->registers[xn];
 
+    int simm9 = (instruction >> 12) & 0x1FF;
+    if (simm9 & 0x100) {
+        simm9 = simm9 | 0xFFFFFE00;
+    }
+
+    bool isPreIndexed = (instruction >> 11) & 0x1;
+    long long readAddress;
+    if (isPreIndexed) {
+        readAddress = simm9 + xnValue;
+    } else {
+        readAddress = xnValue;
+    }
+
+    loadStore(false, instruction, readAddress, memPointer, registers);
+
+    if (!isPreIndexed) {
+        readAddress += simm9;
+    }
+    registers->registers[xn] = readAddress;
+}
 
 void regOffset(long long instruction, struct RegisterStore *registers) {
 
 }
 
-void literal(long long instruction, struct RegisterStore *registers) {
+void executeLoadLiteral(long long instruction, uint32_t *memPointer, struct RegisterStore *registers) {
+    uint32_t simm19 = (instruction >> 5) & 0x7FFFF;
+    long long offset = simm19 * 4;
+    long long readAddress = registers->programCounter + offset;
 
+    loadStore(true, instruction, readAddress, memPointer, registers);
 }
 
-void executeDataTransfer(long long instruction, struct RegisterStore *registers) {
-    if (instruction >> 31 == 1) {
-        literal(instruction, registers);
+void executeDataTransfer(long long instruction, uint32_t *memPointer, struct RegisterStore *registers) {
+    bool isLoadLiteral = (instruction >> 31) == 0;
+
+    if (isLoadLiteral) {
+        executeLoadLiteral(instruction, registers);
     }
+
     if (((instruction >> 24) & 1) == 1) {
         unsignedOffset(instruction, registers);
     } else if (instruction >> 21 == 1) {
         regOffset(instruction, registers);
     } else {
-        preAndPostIndex(instruction, registers);
+        preAndPostIndex(instruction, memPointer, registers);
     }
 }
 
@@ -477,27 +561,6 @@ bool isBranch(long long op0) {
 
 void executeBranch(long long instruction, struct RegisterStore *registers) {
 
-}
-
-void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister,uint32_t *memPointer, char *filename) {
-    FILE *fp;
-    fp = fopen(filename, "w");// "w" means that we are going to write on this file
-    for (int i = 0; i < 31; i++) {
-        fprintf(fp, "X%02d    = %016lld\n", i, registers->registers[i]);
-    }
-    fprintf(fp, "PC     = %016llx\n", registers->programCounter);
-    char n_val = stateRegister->negativeFlag == true ? 'N' : '-';
-    char z_val = stateRegister->zeroFlag == true ? 'Z' : '-';
-    char c_val = stateRegister->carryFlag == true ? 'C' : '-';
-    char v_val = stateRegister->overflowFlag == true ? 'V' : '-';
-    fprintf(fp, "PSTATE : %c%c%c%c\n", n_val, z_val, c_val, v_val);
-    fprintf(fp, "Non-Zero Memory:\n");
-    uint32_t memAddress = 0;
-    while (memPointer[memAddress] != 0) {
-        fprintf(fp, "0X%08x : %08x\n", memAddress * 4, memPointer[memAddress]);
-        memAddress++;
-    }
-    fclose(fp); //Don't forget to close the file when finished
 }
 
 
@@ -515,7 +578,7 @@ void processor(uint32_t *memPointer) {
 
     while (true) {
         printf("PC=%lld\n", registerStore.programCounter);
-        uint32_t instruction = memPointer[registerStore.programCounter / 4];
+        uint32_t instruction = fetchInstruction(registerStore.programCounter, memPointer);
         printf("%x\n", instruction);
         long long op0 = (instruction >> 25) & 0xF;
 
@@ -535,7 +598,7 @@ void processor(uint32_t *memPointer) {
         } else if (isBranch(op0)) {
             executeBranch(instruction, &registerStore);
         } else {
-            executeDataTransfer(instruction, &registerStore);
+            executeDataTransfer(instruction, memPointer, &registerStore);
         }
     }
 
@@ -559,7 +622,7 @@ void processor(uint32_t *memPointer) {
 int main(int argc, char **argv) {
     // Callocs memory of size 2MB
     uint32_t *memPointer = allocateMemory();
-    loadMemory(memPointer, "src/mul01_exp.bin");
+    loadMemoryFromFile(memPointer, "src/mul01_exp.bin");
     processor(memPointer); //Second arg contains output file
     return EXIT_SUCCESS;
 }
