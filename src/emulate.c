@@ -194,7 +194,7 @@ void executeArithmeticProcessingImm(long long instruction, struct RegisterStore 
     enum DpOpcArithmetic opc = (instruction >> 29) & 0x3;
 
     bool setsFlags = opc == ADDS || opc == SUBS;
-    if (rn == 31 && setsFlags) {
+    if (rn == 31 && !setsFlags) {
         return;
     }
     long long reg = registers->zeroRegister;
@@ -213,6 +213,13 @@ void executeArithmeticProcessingImm(long long instruction, struct RegisterStore 
     if (setsFlags) {
         registers->stateRegister.negativeFlag = res < 0;
         registers->stateRegister.zeroFlag = res == 0;
+        if (opc == ADDS) {
+            registers->stateRegister.carryFlag = reg > 0 && res < 0;
+            registers->stateRegister.overflowFlag = reg > 0 && res < 0;
+        } else {
+            registers->stateRegister.carryFlag = !(reg < 0 && res > 0);
+            registers->stateRegister.overflowFlag = reg < 0 && res > 0;
+        }
     }
 
     if (rd < 31) {
