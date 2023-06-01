@@ -7,7 +7,7 @@
 
 // CONSTANTS
 
-#define MEMORY_COUNT 131072
+#define MEMORY_COUNT 524288
 
 // FILE: registers.h
 
@@ -80,16 +80,18 @@ uint32_t fetchInstruction(long long address, uint32_t *memPointer) {
 }
 
 long long fetchData(long long address, uint32_t *memPointer, bool isDoubleWord) {
+    printf("Storing data to memory...");
     long long data;
     if (isDoubleWord) {
         uint32_t lsbWord = memPointer[address / 4];
-        uint32_t msbWord = memPointer[address / 4 + 1];
+        long long msbWord = memPointer[address / 4 + 1];
         data = (msbWord << 32) | lsbWord;
     } else {
-        uint32_t word = memPointer[address / 4];
+        long long word = memPointer[address / 4];
         data = word;
         if (word & 0x80000000) {
-            data = word | (0xFFFFFFFF << 32);
+            long long extend = 0xFFFFFFFF;
+            data = word | (extend << 32);
         }
     }
 
@@ -461,6 +463,7 @@ void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *re
 // MARK: singleDataTransfer.c
 
 void loadStore(bool forceLoad, long long instruction, long long readAddress, uint32_t *memPointer, struct RegisterStore *registerStore) {
+    printf("Load/Store at address: %lld\n", readAddress);
     bool isLoad = forceLoad | (instruction >> 22) & 0x1;
     bool isDoubleWord = (instruction >> 30) & 0x1;
     uint32_t rt = instruction & 0x1F;
@@ -478,6 +481,7 @@ void loadStore(bool forceLoad, long long instruction, long long readAddress, uin
 }
 
 void executeImmediateOffset(long long instruction, uint32_t *memPointer, struct RegisterStore *registers) {
+    printf("Executing immediate offset...\n");
     uint32_t xn = (instruction >> 5) & 0x1F;
     uint64_t imm12 = (instruction >> 10) & 0x7FF;
 
@@ -489,6 +493,7 @@ void executeImmediateOffset(long long instruction, uint32_t *memPointer, struct 
 }
 
 void executeRegisterOffset(long long instruction, uint32_t *memPointer, struct RegisterStore *registers) {
+    printf("Executing register offset...\n");
     uint32_t xn = (instruction >> 5) & 0x1F;
     uint32_t xm = (instruction >> 16) & 0x1F;
 
@@ -501,6 +506,7 @@ void executeRegisterOffset(long long instruction, uint32_t *memPointer, struct R
 }
 
 void preAndPostIndex(long long instruction, uint32_t *memPointer, struct RegisterStore *registers) {
+    printf("Executing reg. indexed...\n");
     uint32_t xn = (instruction >> 5) & 0x1F;
     long long xnValue = registers->registers[xn];
 
@@ -526,6 +532,7 @@ void preAndPostIndex(long long instruction, uint32_t *memPointer, struct Registe
 }
 
 void executeLoadLiteral(long long instruction, uint32_t *memPointer, struct RegisterStore *registers) {
+    printf("Executing literal...\n");
     uint32_t simm19 = (instruction >> 5) & 0x7FFFF;
     long long offset = simm19 * 4;
     long long readAddress = registers->programCounter + offset;
@@ -534,6 +541,7 @@ void executeLoadLiteral(long long instruction, uint32_t *memPointer, struct Regi
 }
 
 void executeDataTransfer(long long instruction, uint32_t *memPointer, struct RegisterStore *registerStore) {
+    printf("Executing data transfer...\n");
     bool isLiteral = (instruction >> 31) == 0;
     bool isImmediate = (instruction >> 24) & 1;
     if (isLiteral) {
@@ -632,8 +640,7 @@ void processor(uint32_t *memPointer, char* filename) {
 
         if (instruction == 0x8a000000 || instruction == 0) {
             break;
-        }
-        if (instruction == 0xD503201F) {
+        } else if (instruction == 0xD503201F) {
             continue;
         } else if (isDataProcessingImm(op0)) {
             executeDataProcessingImm(instruction, &registerStore);
@@ -644,6 +651,7 @@ void processor(uint32_t *memPointer, char* filename) {
         } else {
             executeDataTransfer(instruction, memPointer, &registerStore);
         }
+        registerStore.programCounter += 4;
     }
 
     outputFile(&registerStore, &stateRegister, memPointer, filename);
