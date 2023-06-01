@@ -152,11 +152,12 @@ void loadMemoryFromFile(uint32_t *memPointer, char *filename) {
     }
 }
 
-void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister,uint32_t *memPointer, char *filename) {
+void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, uint32_t *memPointer, char* filename) {
     FILE *fp;
-    fp = fopen(filename, "w");// "w" means that we are going to write on this file
+    fp = fopen(filename, "w");
+    fprintf(fp, "Registers:\n");
     for (int i = 0; i < 31; i++) {
-        fprintf(fp, "X%02d    = %016lld\n", i, registers->registers[i]);
+        fprintf(fp, "X%02d    = %016llx\n", i, registers->registers[i]);
     }
     fprintf(fp, "PC     = %016llx\n", registers->programCounter);
     char n_val = stateRegister->negativeFlag == true ? 'N' : '-';
@@ -573,13 +574,68 @@ bool isBranch(long long op0) {
     return (op0 | 0x1) == match;
 }
 
-void executeBranch(long long instruction, struct RegisterStore *registers) {
+enum offsetType {
+    UNCONDITIONAL,
+    CONDITIONAL,
+    INVAL,
+    REGISTER
+};
 
+void executeBranch(long long instruction, struct RegisterStore *registers) {
+    enum offsetType branchType = instruction >> 29 & 0x3;
+    if (branchType == UNCONDITIONAL) {
+        int simm26 = instruction & 0x3FFFFFF;
+        registers->programCounter = simm26 * 4;
+    } else if (branchType == REGISTER) {
+        int xn = (instruction >> 5) & 0x1F;
+        registers->programCounter = registers->registers[xn];
+    } else {
+        long long cond = instruction & 0xF;
+        long long simm19 = (instruction >> 5) & 0xFFFFF;
+
+        struct PSTATE pstate = registers->stateRegister;
+        switch (cond) {
+            case 0x0: // EQ
+                if (pstate.zeroFlag == 1) {
+                    registers->programCounter = simm19 * 4;
+                }
+                break;
+            case 0x1: // NE
+                if (pstate.zeroFlag == 0) {
+                    registers->programCounter = simm19 * 4;
+                }
+                break;
+            case 0xA: // GE
+                if (pstate.zeroFlag == pstate.overflowFlag) {
+                    registers->programCounter = simm19 * 4;
+                }
+                break;
+            case 0xB: // LT
+                if (pstate.zeroFlag != pstate.overflowFlag) {
+                    registers->programCounter = simm19 * 4;
+                }
+                break;
+            case 0xC: // GT
+                if (pstate.zeroFlag == 0 && pstate.negativeFlag == pstate.overflowFlag) {
+                    registers->programCounter = simm19 * 4;
+                }
+                break;
+            case 0xD: // LE
+                if (!(pstate.zeroFlag == 0 && pstate.negativeFlag == pstate.overflowFlag)) {
+                    registers->programCounter = simm19 * 4;
+                }
+                break;
+            default: // AL
+                registers->programCounter = simm19 * 4;
+                break;
+        }
+    }
 }
 
 
 
-void processor(uint32_t *memPointer) {
+
+void processor(uint32_t *memPointer, char* filename) {
     struct PSTATE stateRegister = { false, true, false, false };
 
     struct RegisterStore registerStore;
@@ -616,8 +672,7 @@ void processor(uint32_t *memPointer) {
         }
     }
 
-    outputFile(&registerStore, &stateRegister, memPointer, "output.out");
-    free(memPointer);
+    outputFile(&registerStore, &stateRegister, memPointer, filename);
 
     for (int i = 0; i < sizeof(registerStore.registers) / sizeof(registerStore.registers[0]); i++) {
         long long res = registerStore.registers[i];
@@ -636,7 +691,8 @@ void processor(uint32_t *memPointer) {
 int main(int argc, char **argv) {
     // Callocs memory of size 2MB
     uint32_t *memPointer = allocateMemory();
-    loadMemoryFromFile(memPointer, "src/mul01_exp.bin");
-    processor(memPointer); //Second arg contains output file
+    loadMemoryFromFile(memPointer, argv[1]); //replace filename with first cla
+    processor(memPointer, argv[2]); //replace filename with second cla
+    free(memPointer);
     return EXIT_SUCCESS;
 }
