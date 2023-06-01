@@ -524,8 +524,12 @@ void preAndPostIndex(long long instruction, uint32_t *memPointer, struct Registe
     registers->registers[xn] = readAddress;
 }
 
-void regOffset(long long instruction, struct RegisterStore *registers) {
-
+void regOffset(long long instruction, uint32_t *memPointer, struct RegisterStore *registers) {
+    uint32_t xn = (instruction >> 5) & 0x1F;
+    long long xn_value = registers->registers[xn];
+    uint32_t xm = (instruction >> 16) & 0x1F;
+    long long xm_value = registers->registers[xm];
+    long long address = xn_value + xm_value;
 }
 
 void executeLoadLiteral(long long instruction, uint32_t *memPointer, struct RegisterStore *registers) {
