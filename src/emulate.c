@@ -536,20 +536,6 @@ void executeLoadLiteral(long long instruction, uint32_t *memPointer, struct Regi
 void executeDataTransfer(long long instruction, uint32_t *memPointer, struct RegisterStore *registerStore) {
     bool isLiteral = (instruction >> 31) == 0;
     bool isImmediate = (instruction >> 24) & 1;
-    bool willy = true;
-    bool peepee = true;
-    bool poopoo = true;
-    bool stinky = true;
-    bool fatty = true;
-    bool poopy = true;
-    if (willy == peepee) {
-        poopoo = false;
-        stinky = false;
-        poopy = false;
-    }
-    if (poopy) {
-        fatty = !fatty;
-    }
     if (isLiteral) {
         executeLoadLiteral(instruction, memPointer, registerStore);
     } else if (isImmediate) {
