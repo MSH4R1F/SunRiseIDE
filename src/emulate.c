@@ -125,7 +125,6 @@ void loadMemoryFromFile(uint32_t *memPointer, char *filename) {
     FILE *file = fopen(filename, "rb");  // Open the binary file in read mode
 
     if (file == NULL) {
-        printf("Failed to open the file.\n");
         return;
     }
 
@@ -133,14 +132,12 @@ void loadMemoryFromFile(uint32_t *memPointer, char *filename) {
         uint32_t value;  // Variable to store the read integer
 
         if (fseek(file, 4 * counter, SEEK_SET) != 0) {
-            printf("Failed to seek to the desired position.\n");
             fclose(file);
             return;
         }
 
         // Read 4 bytes from the file into the variable 'value'
         if (fread(&value, sizeof(value), 1, file) != 1) {
-            printf("Failed to read from the file.\n");
             fclose(file);
             return;
         }
@@ -290,24 +287,17 @@ void executeArithmeticProcessingImm(long long instruction, struct RegisterStore 
 }
 
 void executeWideMoveProcessing(long long instruction, struct RegisterStore *registers) {
-    printf("executed wide move\n");
     uint32_t rd = instruction & 0x1F;
     uint32_t hw = (instruction >> 21) & 0x3;
     uint64_t imm16 = (instruction >> 5) & 0xFFFF;
-    printf("printing imm16: %llu\n", imm16);
 
     uint32_t shift = hw * 16;
     uint64_t op = imm16 << shift;
-    printf("printing op: %llu\n", op);
     uint32_t sf = (instruction >> 31);
 
     enum DpOpcWideMove opc = (instruction >> 29) & 0x3;
-    if (opc == 2) {
-        printf("correctly decoded opcode\n");
-    }
 
     long long res = registers->registers[rd];
-    printf("%lld\n", res);
     if (opc == MOVZ) {
         res = op;
     } else if (opc == MOVN) {
@@ -319,7 +309,6 @@ void executeWideMoveProcessing(long long instruction, struct RegisterStore *regi
         // INVALID
         return;
     }
-    printf("%lld\n", res);
 
     if (sf == 0) {
         res = res & 0xFFFFFFFF;
@@ -364,7 +353,6 @@ bool carry(bool isPlus, bool overunderflow) {
 }
 
 void executeDataProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
-    printf("DataProcessing called\n");
     uint32_t opr = (instruction >> 21) & 0xF;
     uint32_t m = (instruction >> 28) & 0x1;
     uint32_t check = (opr >> 3) + (2*m);
@@ -378,7 +366,6 @@ void executeDataProcessingReg(uint32_t instruction, struct RegisterStore *regist
 }
 
 void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
-    printf("ArithmeticProcessing called\n");
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t opr = (instruction >> 11) & 0x1F;
     uint32_t rn = (instruction >> 5) & 0x1F;
@@ -458,7 +445,6 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
 }
 
 void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
-    printf("Multiply Processing called\n");
     uint32_t rm = (instruction >> 16) & 0x1F;
     uint32_t x = ((instruction >> 15) & 0x1) == 0x1 ? -1 : 1;
     long long rm_val = registers->registers[rm];
@@ -652,9 +638,7 @@ void processor(uint32_t *memPointer, char* filename) {
     }
 
     while (true) {
-        printf("PC=%lld\n", registerStore.programCounter);
         uint32_t instruction = fetchInstruction(registerStore.programCounter, memPointer);
-        printf("%x\n", instruction);
         long long op0 = (instruction >> 25) & 0xF;
 
         if (instruction == 0x8a000000 || instruction == 0) {
@@ -678,26 +662,13 @@ void processor(uint32_t *memPointer, char* filename) {
     }
 
     outputFile(&registerStore, &stateRegister, memPointer, filename);
-
-    for (int i = 0; i < sizeof(registerStore.registers) / sizeof(registerStore.registers[0]); i++) {
-        long long res = registerStore.registers[i];
-        if (res != 0) {
-            printf("X%d   = %lld\n", i, registerStore.registers[i]);
-        }
-    }
-    //Prints flags - delete later
-    char n_val = stateRegister.negativeFlag == true ? 'N' : '-';
-    char z_val = stateRegister.zeroFlag == true ? 'Z' : '-';
-    char c_val = stateRegister.carryFlag == true ? 'C' : '-';
-    char v_val = stateRegister.overflowFlag == true ? 'V' : '-';
-    printf("PSTATE : %c%c%c%c\n", n_val, z_val, c_val, v_val);
 }
 
 int main(int argc, char **argv) {
     // Callocs memory of size 2MB
     uint32_t *memPointer = allocateMemory();
-    loadMemoryFromFile(memPointer, argv[1]); //replace filename with first cla
-    processor(memPointer, argv[2]); //replace filename with second cla
+    loadMemoryFromFile(memPointer, argv[1]); //replace filename with argv[1]
+    processor(memPointer, argv[2]); //replace filename with second argv[2]
     free(memPointer);
     return EXIT_SUCCESS;
 }
