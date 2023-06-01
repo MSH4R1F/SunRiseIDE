@@ -3,10 +3,9 @@
 #include <stdio.h>
 
 int main(int argc, char **argv) {
-    bool hello = 0x3 & 0x4;
-    if (hello) {
-        printf("hello");
-    }
+    long long num = 3;
+    uint32_t hello = num;
+    printf("%u\n", hello);
     return EXIT_SUCCESS;
 }
 
