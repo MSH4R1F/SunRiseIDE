@@ -494,7 +494,7 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister,ui
 
 
 
-void processor(char *filename) {
+void processor(uint32_t *memPointer) {
     struct PSTATE stateRegister = { false, false, false, false };
 
     struct RegisterStore registerStore;
@@ -504,10 +504,6 @@ void processor(char *filename) {
     for (int i = 0; i < sizeof(registerStore.registers) / sizeof(registerStore.registers[0]); i++) {
         registerStore.registers[i] = 0;
     }
-
-    // Mallocs memory of size 2MB
-    uint32_t *memPointer = allocateMemory();
-    loadMemory(memPointer, filename);
 
     while (true) {
         printf("PC=%lld\n", registerStore.programCounter);
@@ -547,6 +543,9 @@ void processor(char *filename) {
 }
 
 int main(int argc, char **argv) {
-    processor("src/add01_exp.bin"); //Second arg contains output file
+    // Mallocs memory of size 2MB
+    uint32_t *memPointer = allocateMemory();
+    loadMemory(memPointer, "src/add01_exp.bin");
+    processor(memPointer); //Second arg contains output file
     return EXIT_SUCCESS;
 }
