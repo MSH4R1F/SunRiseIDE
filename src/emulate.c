@@ -57,7 +57,7 @@ void executeBranch(long long instruction, struct RegisterStore *registers);
 // FILE: utils.c
 
 uint32_t *allocateMemory(void) {
-    uint32_t *memPointer = calloc(MEMORY_CAPACITY, MEMORY_CAPACITY * sizeof(uint32_t));
+    uint32_t *memPointer = calloc(MEMORY_CAPACITY, sizeof(uint32_t));
     assert( memPointer != NULL );
     return memPointer;
 }
@@ -74,7 +74,7 @@ void loadMemory(uint32_t *memPointer, char *filename) {
     while (true) {
         uint32_t value;  // Variable to store the read integer
 
-        if (fseek(file, counter, SEEK_SET) != 0) {
+        if (fseek(file, 4 * counter, SEEK_SET) != 0) {
             printf("Failed to seek to the desired position.\n");
             fclose(file);
             return;
@@ -471,7 +471,7 @@ void executeBranch(long long instruction, struct RegisterStore *registers) {
 
 }
 
-void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, char *filename) {
+void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister,uint32_t *memPointer, char *filename) {
     FILE *fp;
     fp = fopen(filename, "w");// "w" means that we are going to write on this file
     for (int i = 0; i < 31; i++) {
@@ -484,7 +484,11 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, c
     char v_val = stateRegister->overflowFlag == true ? 'V' : '-';
     fprintf(fp, "PSTATE : %c%c%c%c\n", n_val, z_val, c_val, v_val);
     fprintf(fp, "Non-Zero Memory:\n");
-    // Implement memory
+    uint32_t memAddress = 0;
+    while (memPointer[memAddress] != 0) {
+        fprintf(fp, "0X%08x : %08x\n", memAddress * 4, memPointer[memAddress]);
+        memAddress++;
+    }
     fclose(fp); //Don't forget to close the file when finished
 }
 
@@ -531,9 +535,8 @@ void processor(char *filename) {
         }
     }
 
+    outputFile(&registerStore, &stateRegister, memPointer, "output.out");
     free(memPointer);
-
-    outputFile(&registerStore, &stateRegister, "output.out");
 
     for (int i = 0; i < sizeof(registerStore.registers) / sizeof(registerStore.registers[0]); i++) {
         long long res = registerStore.registers[i];
@@ -544,6 +547,6 @@ void processor(char *filename) {
 }
 
 int main(int argc, char **argv) {
-    processor("src/mul01_exp.bin");
+    processor("src/add01_exp.bin"); //Second arg contains output file
     return EXIT_SUCCESS;
 }
