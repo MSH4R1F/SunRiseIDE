@@ -82,8 +82,6 @@ uint32_t fetchInstruction(long long address, uint32_t *memPointer) {
 long long fetchData(long long address, uint32_t *memPointer, bool isDoubleWord) {
     long long data;
     if (isDoubleWord) {
-        assert(address % 8 == 0);
-
         uint32_t lsbWord = memPointer[address / 4];
         uint32_t msbWord = memPointer[address / 4 + 1];
         data = (msbWord << 32) | lsbWord;
@@ -468,7 +466,12 @@ void loadStore(bool forceLoad, long long instruction, long long readAddress, uin
     uint32_t rt = instruction & 0x1F;
 
     if (isLoad) {
-        registerStore->registers[rt] = fetchData(readAddress, memPointer, isDoubleWord);
+        printf("makes it pasfdsahfat here...\n");
+        printf("%b\n", isDoubleWord);
+        long long result = fetchData(readAddress, memPointer, isDoubleWord);
+        printf("result: %llx\n", result);
+        registerStore->registers[rt] = result;
+        printf("makes it past here...\n");
     } else {
         storeData(registerStore->registers[rt], readAddress, memPointer, isDoubleWord);
     }
@@ -646,11 +649,7 @@ void processor(uint32_t *memPointer, char* filename) {
         }
         if (instruction == 0xD503201F) {
             continue;
-        }
-
-        registerStore.programCounter += 4;
-
-        if (isDataProcessingImm(op0)) {
+        } else if (isDataProcessingImm(op0)) {
             executeDataProcessingImm(instruction, &registerStore);
         } else if (isDataProcessingReg(op0)) {
             executeDataProcessingReg(instruction, &registerStore);
@@ -667,8 +666,8 @@ void processor(uint32_t *memPointer, char* filename) {
 int main(int argc, char **argv) {
     // Callocs memory of size 2MB
     uint32_t *memPointer = allocateMemory();
-    loadMemoryFromFile(memPointer, argv[1]); //replace filename with argv[1]
-    processor(memPointer, argv[2]); //replace filename with second argv[2]
+    loadMemoryFromFile(memPointer, "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin"); //replace filename with argv[1]
+    processor(memPointer, "output.out"); //replace filename with second argv[2]
     free(memPointer);
     return EXIT_SUCCESS;
 }
