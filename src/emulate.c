@@ -179,6 +179,7 @@ bool isArithmeticProcessing(long long opi) {
     long long match = 0x2;
     return opi == match;
 }
+
 void executeArithmeticProcessingImm(long long instruction, struct RegisterStore *registers) {
     uint32_t rd = instruction & 0x1F;
     uint32_t rn = (instruction >> 5) & 0x1F;
@@ -477,7 +478,7 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister,ui
     for (int i = 0; i < 31; i++) {
         fprintf(fp, "X%02d    = %016lld\n", i, registers->registers[i]);
     }
-    fprintf(fp, "PC     = %016lld\n", registers->programCounter);
+    fprintf(fp, "PC     = %016llx\n", registers->programCounter);
     char n_val = stateRegister->negativeFlag == true ? 'N' : '-';
     char z_val = stateRegister->zeroFlag == true ? 'Z' : '-';
     char c_val = stateRegister->carryFlag == true ? 'C' : '-';
@@ -495,7 +496,7 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister,ui
 
 
 void processor(uint32_t *memPointer) {
-    struct PSTATE stateRegister = { false, false, false, false };
+    struct PSTATE stateRegister = { false, true, false, false };
 
     struct RegisterStore registerStore;
     registerStore.programCounter = 0;
@@ -540,12 +541,18 @@ void processor(uint32_t *memPointer) {
             printf("X%d   = %lld\n", i, registerStore.registers[i]);
         }
     }
+    //Prints flags - delete later
+    char n_val = stateRegister.negativeFlag == true ? 'N' : '-';
+    char z_val = stateRegister.zeroFlag == true ? 'Z' : '-';
+    char c_val = stateRegister.carryFlag == true ? 'C' : '-';
+    char v_val = stateRegister.overflowFlag == true ? 'V' : '-';
+    printf("PSTATE : %c%c%c%c\n", n_val, z_val, c_val, v_val);
 }
 
 int main(int argc, char **argv) {
-    // Mallocs memory of size 2MB
+    // Callocs memory of size 2MB
     uint32_t *memPointer = allocateMemory();
-    loadMemory(memPointer, "src/add01_exp.bin");
+    loadMemory(memPointer, "src/mul01_exp.bin");
     processor(memPointer); //Second arg contains output file
     return EXIT_SUCCESS;
 }
