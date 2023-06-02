@@ -610,7 +610,7 @@ enum offsetType {
 void executeBranch(long long instruction, struct RegisterStore *registerStore) {
     enum offsetType branchType = instruction >> 29 & 0x3;
     if (branchType == UNCONDITIONAL) {
-        int64_t simm26 = instruction & 0x3FFFFFF;
+        long long simm26 = instruction & 0x3FFFFFF << 2;
 
         if (simm26 & 0x2000000) {
             uint64_t signExtend = 0x3FFFFFFFFF << 26;
