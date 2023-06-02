@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <netinet/in.h>
 #include <assert.h>
-#include <math.h>
 
 // CONSTANTS
 
@@ -87,7 +86,6 @@ long long fetchData(long long address, uint8_t *memPointer, bool isDoubleWord) {
         long long currentByte = memPointer[address + i];
         uint32_t significance = 8 * i;
         data = data | (currentByte << significance);
-        printf("data = %llx\n", data);
     }
 
     if (!isDoubleWord) {
@@ -174,7 +172,7 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, u
         memAddress += 4;
         if (data != 0) {
             // Load 32 bit word and convert from little endian
-            fprintf(fp, "0x%08llx : %08x\n", memAddress, data);
+            fprintf(fp, "0x%08llx : %08x\n", memAddress - 4, data);
             data = fetchData(memAddress, memPointer, false);
         }
     }
@@ -219,8 +217,7 @@ long long arithmeticRightShift(long long number, uint32_t shift, bool is64Bit) {
     number &= mask;
     bool signBit = (number >> (wordSize - 1)) & 1;
     if (signBit) {
-
-        return (mask << (wordSize - shift)) | (number >> shift);
+        return ((mask << (wordSize - shift)) | (number >> shift)) & mask;
     }
     return logicalRightShift(number, shift, is64Bit);
 }
@@ -231,7 +228,9 @@ long long rotateRight(long long number, uint32_t shift, bool is64Bit) {
     if (shift > wordSize) {
         return 0;
     }
-    return ((number >> shift) | (number << (wordSize - shift))) & mask;
+    number &= mask;
+    uint64_t rotatedBits = (number & ToPow2(shift)) << (wordSize - shift);
+    return ((number >> shift) | rotatedBits) & mask;
 }
 
 // FILE: dataProcessingImm.c
@@ -272,6 +271,7 @@ bool isArithmeticProcessing(long long opi) {
 void executeArithmeticProcessingImm(long long instruction, struct RegisterStore *registers) {
     uint32_t rd = instruction & 0x1F;
     uint32_t rn = (instruction >> 5) & 0x1F;
+    uint32_t sf = instruction >> 31;
 
     uint32_t imm12 = (instruction >> 10) & 0xFFF;
     bool sh = (instruction >> 22) & 0x1;
@@ -293,10 +293,13 @@ void executeArithmeticProcessingImm(long long instruction, struct RegisterStore 
     }
 
     long long res;
-    if (opc == ADD || opc == SUB) {
+    if (opc == ADD || opc == ADDS) {
         res = reg + op;
     } else {
         res = reg - op;
+    }
+    if (sf) {
+        res &= 0xFFFFFFFF;
     }
 
     // Complete the flags
@@ -334,7 +337,8 @@ void executeWideMoveProcessing(long long instruction, struct RegisterStore *regi
     } else if (opc == MOVN) {
         res = ~op;
     } else if (opc == MOVK) {
-        res = res & ~(0xFFFF << shift);
+        long long mask = 0xFFFF;
+        res = res & ~(mask << shift);
         res = res | op;
     } else {
         // INVALID
@@ -347,6 +351,7 @@ void executeWideMoveProcessing(long long instruction, struct RegisterStore *regi
 
     if (rd < 31) {
         registers->registers[rd] = res;
+        printf("res: %llx\n", res);
     }
 }
 
@@ -398,23 +403,30 @@ void executeDataProcessingReg(uint32_t instruction, struct RegisterStore *regist
 
 void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
     uint32_t shift = (instruction >> 22) & 0x3;
-    uint32_t opr = (instruction >> 11) & 0x1F;
+    uint32_t operand = (instruction >> 10) & 0x3F;
     uint32_t rn = (instruction >> 5) & 0x1F;
     long long rn_val = registers->registers[rn];
+    printf("rn_val: %llx\n", rn_val);
     uint32_t rm = (instruction >> 16) & 0x1F;
     long long rm_val = registers->registers[rm];
-    uint32_t opc = (instruction >> 29) & 0x1;
+    printf("rm_val: %llx\n", rm_val);
+    uint32_t opc = (instruction >> 29) & 0x3;
     uint32_t rd = instruction & 0x1F;
     long long rd_val;
     bool sf = instruction >> 31;
-    long long op2 = shiftFun(shift, rm_val, opr, sf);
-    int multiplier = -1;
-    if (opc / 2 == 0) {
-        multiplier *= -1;
+    long long op2 = shiftFun(shift, rm_val, operand, sf);
+    printf("op2: %llx\n", op2);
+    int multiplier = 1;
+    if (opc - 2 >= 0) {
+        multiplier = -1;
     }
-    rd_val = rn_val + multiplier*op2;
+    rd_val = rn_val + (multiplier * op2);
+    printf("%x", rd_val);
+    if (~sf) {
+        rd_val &= 0xFFFFFFFF;
+    }
     if (opc % 2 == 1) {
-        bool V = overunderflow(rn_val, multiplier*op2, rd_val);
+        bool V = overunderflow(rn_val, multiplier * op2, rd_val);
         registers->stateRegister.negativeFlag = rd_val < 0;
         registers->stateRegister.zeroFlag = rd_val == 0;
         registers->stateRegister.carryFlag = carry(multiplier == 1, V);
@@ -685,8 +697,16 @@ void processor(uint8_t *memPointer, char* filename) {
 int main(int argc, char **argv) {
     // Callocs memory of size 2MB
     uint8_t *memPointer = allocateMemory();
-    loadMemoryFromFile(memPointer, "../../armv8_testsuite/test/expected_results/shifts/asr1_exp.bin"); //replace filename with "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin"
-    processor(memPointer, "output.out"); //replace filename with second output.out
+    bool isCommandLine = 0;
+    if (isCommandLine) {
+        loadMemoryFromFile(memPointer,
+                           argv[1]); //replace filename with "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin"
+        processor(memPointer, argv[2]); //replace filename with second output.out
+    } else {
+        loadMemoryFromFile(memPointer,
+                           "../../armv8_testsuite/test/expected_results/generated/add/add0_exp.bin"); //replace filename with "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin"
+        processor(memPointer, "output.out"); //replace filename with second output.out
+    }
     free(memPointer);
     return EXIT_SUCCESS;
 }
