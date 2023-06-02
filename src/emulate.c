@@ -460,15 +460,17 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
     uint32_t opc = (instruction >> 29) & 0x3;
     uint32_t operand = (instruction >> 10) & 0x3F;
     uint32_t rn = (instruction >> 5) & 0x1F;
-    long long rn_val = registers->registers[rn];
+    long long rn_val = registers->zeroRegister;
+    if (rn < 31) {
+        rn_val = registers->registers[rn];
+    }
     uint32_t rm = (instruction >> 16) & 0x1F;
     long long rm_val = registers->registers[rm];
     bool sf = instruction >> 31;
     rm_val = shiftFun(shift, rm_val, operand, sf);
     uint32_t combined_opc = (opc << 1) + N;
-
     uint32_t rd = instruction & 0x1F;
-    if (rd < 30) {
+    if (rd < 31) {
         long long rd_val = 0;
         switch (combined_opc) {
             case 0:
@@ -478,6 +480,8 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
                 rd_val = rn_val & ~rm_val;
                 break;
             case 2:
+                printf("rn_val: %llx\n", rn_val);
+                printf("rm_val: %llx\n", rm_val);
                 rd_val = rn_val | rm_val;
                 break;
             case 3:
@@ -515,6 +519,9 @@ void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *re
     uint32_t ra = (instruction >> 10) & 0x1F;
     uint32_t rn = (instruction >> 5) & 0x1F;
     long long rn_val = registers->registers[rn];
+    if (rn < 31) {
+        rn_val = registers->registers[rn];
+    }
     uint32_t rd = instruction & 0x1F;
     long long ra_val = 0;
     if (ra != 0x1F) {
@@ -741,14 +748,14 @@ void processor(uint8_t *memPointer, char* filename) {
 int main(int argc, char **argv) {
     // Callocs memory of size 2MB
     uint8_t *memPointer = allocateMemory();
-    bool isCommandLine = 0;
+    bool isCommandLine = 1;
     if (isCommandLine) {
         loadMemoryFromFile(memPointer,
                            argv[1]); //replace filename with "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin"
         processor(memPointer, argv[2]); //replace filename with second output.out
     } else {
         loadMemoryFromFile(memPointer,
-                           "../../armv8_testsuite/test/expected_results/generated/add/add0_exp.bin"); //replace filename with "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin"
+                           "../../armv8_testsuite/test/expected_results/shifts/ror2_exp.bin"); //replace filename with "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin"
         processor(memPointer, "output.out"); //replace filename with second output.out
     }
     free(memPointer);
