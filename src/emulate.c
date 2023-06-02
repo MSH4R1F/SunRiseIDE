@@ -222,6 +222,14 @@ long long arithmeticRightShift(long long number, uint32_t shift, bool is64Bit) {
     return logicalRightShift(number, shift, is64Bit);
 }
 
+uint64_t ToPow2(int power) {
+    uint64_t x = 1;
+    for (int i = 0; i < power; i++) {
+        x *= 2;
+    }
+    return x;
+}
+
 long long rotateRight(long long number, uint32_t shift, bool is64Bit) {
     int wordSize = is64Bit ? 64 : 32;
     uint64_t mask = is64Bit ? 0xFFFFFFFFFFFFFFFF : 0xFFFFFFFF;
