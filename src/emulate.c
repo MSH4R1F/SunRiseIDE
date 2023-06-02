@@ -83,7 +83,7 @@ void printb(bool b) {
     }
 }
 
-long long fetchData(long long address, uint8_t *memPointer, bool isDoubleWord) {
+long long loadData(long long address, uint8_t *memPointer, bool isDoubleWord) {
     int bytesCount = 4;
     if (isDoubleWord) {
         bytesCount = 8;
@@ -107,7 +107,7 @@ long long fetchData(long long address, uint8_t *memPointer, bool isDoubleWord) {
 }
 
 uint32_t fetchInstruction(long long address, uint8_t *memPointer) {
-    uint32_t data = fetchData(address, memPointer, false);
+    uint32_t data = loadData(address, memPointer, false);
     return data;
 }
 
@@ -174,17 +174,27 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, u
     fprintf(fp, "PSTATE : %c%c%c%c\n", n_val, z_val, c_val, v_val);
     fprintf(fp, "Non-Zero Memory:\n");
     long long memAddress = 0;
-    uint32_t data = fetchData(memAddress, memPointer, false);
+    uint32_t data = loadData(memAddress, memPointer, false);
     while (memAddress < MEMORY_COUNT) {
         memAddress += 4;
         if (data != 0) {
             // Load 32 bit word and convert from little endian
             fprintf(fp, "0x%08llx : %08x\n", memAddress - 4, data);
-            data = fetchData(memAddress, memPointer, false);
+            data = loadData(memAddress, memPointer, false);
         }
     }
     fclose(fp); //Don't forget to close the file when finished
 }
+
+//long long loadFromRegister(int index, struct RegisterStore *registerStore) {
+//
+//    if (index < 31) {
+//
+//    }
+//}
+//void storeToRegister(int index, ) {
+//
+//}
 
 // FILE: bitwiseshift.c
 
@@ -551,7 +561,7 @@ void loadStore(bool forceLoad, long long instruction, long long readAddress, uin
     uint32_t rt = instruction & 0x1F;
 
     if (isLoad) {
-        long long result = fetchData(readAddress, memPointer, isDoubleWord);
+        long long result = loadData(readAddress, memPointer, isDoubleWord);
         registerStore->registers[rt] = result;
     } else {
         storeData(registerStore->registers[rt], readAddress, memPointer, isDoubleWord);
