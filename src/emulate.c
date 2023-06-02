@@ -156,10 +156,10 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, u
         fprintf(fp, "X%02d    = %016llx\n", i, registers->registers[i]);
     }
     fprintf(fp, "PC     = %016llx\n", registers->programCounter);
-    char n_val = stateRegister->negativeFlag == true ? 'N' : '-';
-    char z_val = stateRegister->zeroFlag == true ? 'Z' : '-';
-    char c_val = stateRegister->carryFlag == true ? 'C' : '-';
-    char v_val = stateRegister->overflowFlag == true ? 'V' : '-';
+    char n_val = stateRegister->negativeFlag ? 'N' : '-';
+    char z_val = stateRegister->zeroFlag ? 'Z' : '-';
+    char c_val = stateRegister->carryFlag ? 'C' : '-';
+    char v_val = stateRegister->overflowFlag ? 'V' : '-';
     fprintf(fp, "PSTATE : %c%c%c%c\n", n_val, z_val, c_val, v_val);
     fprintf(fp, "Non-Zero Memory:\n");
     long long memAddress = 0;
@@ -225,7 +225,7 @@ long long rotateRight(long long number, uint32_t shift, bool is64Bit) {
     if (shift > wordSize) {
         return 0;
     }
-    return (number >> shift) | (number << (32 - shift));
+    return ((number >> shift) | (number << (wordSize - shift))) & mask;
 }
 
 // FILE: dataProcessingImm.c
