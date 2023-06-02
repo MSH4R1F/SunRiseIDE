@@ -32,7 +32,7 @@ void executeDataProcessingImm(long long instruction, struct RegisterStore *regis
 
 bool isArithmeticProcessing(long long opi);
 
-void executeArithmeticProcessingImm(long long instruction, struct RegisterStore *registers);
+void executeArithmeticProcessingImm(long long instruction, struct RegisterStore *registerStore);
 void executeWideMoveProcessing(long long instruction, struct RegisterStore *registers);
 
 // FILE: dataProcessingReg.h
@@ -52,7 +52,7 @@ void executeDataTransfer(long long instruction, uint8_t *memPointer, struct Regi
 // FILE: branch.h
 
 bool isBranch(long long op0);
-void executeBranch(long long instruction, struct RegisterStore *registers);
+void executeBranch(long long instruction, struct RegisterStore *registerStore);
 
 // FILE: registers.c
 
@@ -74,6 +74,14 @@ struct RegisterStore {
 };
 
 // FILE: utils.c
+
+void printb(bool b) {
+    if (b) {
+        printf("true");
+    } else {
+        printf("false");
+    }
+}
 
 long long fetchData(long long address, uint8_t *memPointer, bool isDoubleWord) {
     int bytesCount = 4;
@@ -100,7 +108,6 @@ long long fetchData(long long address, uint8_t *memPointer, bool isDoubleWord) {
 
 uint32_t fetchInstruction(long long address, uint8_t *memPointer) {
     uint32_t data = fetchData(address, memPointer, false);
-    printf("data %llx\n", data);
     return data;
 }
 
@@ -276,7 +283,7 @@ bool isArithmeticProcessing(long long opi) {
     return opi == match;
 }
 
-void executeArithmeticProcessingImm(long long instruction, struct RegisterStore *registers) {
+void executeArithmeticProcessingImm(long long instruction, struct RegisterStore *registerStore) {
     uint32_t rd = instruction & 0x1F;
     uint32_t rn = (instruction >> 5) & 0x1F;
     uint32_t sf = instruction >> 31;
@@ -295,9 +302,9 @@ void executeArithmeticProcessingImm(long long instruction, struct RegisterStore 
     if (rn == 31 && !setsFlags) {
         return;
     }
-    long long reg = registers->zeroRegister;
+    long long reg = registerStore->zeroRegister;
     if (rn < 31) {
-        reg = registers->registers[rn];
+        reg = registerStore->registers[rn];
     }
 
     long long res;
@@ -312,19 +319,23 @@ void executeArithmeticProcessingImm(long long instruction, struct RegisterStore 
 
     // Complete the flags
     if (setsFlags) {
-        registers->stateRegister.negativeFlag = res < 0;
-        registers->stateRegister.zeroFlag = res == 0;
+        registerStore->stateRegister.negativeFlag = res < 0;
+        registerStore->stateRegister.zeroFlag = res == 0;
+
+        printb(registerStore->stateRegister.negativeFlag);
+        printf("\n");
+
         if (opc == ADDS) {
-            registers->stateRegister.carryFlag = reg > 0 && res < 0;
-            registers->stateRegister.overflowFlag = reg > 0 && res < 0;
+            registerStore->stateRegister.carryFlag = reg > 0 && res < 0;
+            registerStore->stateRegister.overflowFlag = reg > 0 && res < 0;
         } else {
-            registers->stateRegister.carryFlag = !(reg < 0 && res > 0);
-            registers->stateRegister.overflowFlag = reg < 0 && res > 0;
+            registerStore->stateRegister.carryFlag = !(reg < 0 && res > 0);
+            registerStore->stateRegister.overflowFlag = reg < 0 && res > 0;
         }
     }
 
     if (rd < 31) {
-        registers->registers[rd] = res;
+        registerStore->registers[rd] = res;
     }
 }
 
@@ -616,52 +627,66 @@ enum offsetType {
     REGISTER
 };
 
-void executeBranch(long long instruction, struct RegisterStore *registers) {
+void executeBranch(long long instruction, struct RegisterStore *registerStore) {
     enum offsetType branchType = instruction >> 29 & 0x3;
     if (branchType == UNCONDITIONAL) {
-        int simm26 = instruction & 0x3FFFFFF;
-        registers->programCounter = simm26 * 4;
-    } else if (branchType == REGISTER) {
-        int xn = (instruction >> 5) & 0x1F;
-        registers->programCounter = registers->registers[xn];
-    } else {
-        long long cond = instruction & 0xF;
-        long long simm19 = (instruction >> 5) & 0xFFFFF;
+        long long simm26 = instruction & 0x3FFFFFF << 2;
 
-        struct PSTATE pstate = registers->stateRegister;
+        if (simm26 & 0x2000000) {
+            uint64_t signExtend = 0x3FFFFFFFFF << 26;
+            simm26 = simm26 | signExtend;
+        }
+
+        registerStore->programCounter = simm26;
+    } else if (branchType == REGISTER) {
+        uint32_t xn = (instruction >> 5) & 0x1F;
+        registerStore->programCounter = registerStore->registers[xn];
+    } else {
+        uint32_t cond = instruction & 0xF;
+
+        long long simm19 = 4 * ((instruction >> 5) & 0x7FFFF);
+
+        if (simm19 & 0x100000) {
+            uint64_t signExtend = 0x7FFFFFFFFFF << 21;
+            simm19 = simm19 | signExtend;
+        }
+
+        struct PSTATE pstate = registerStore->stateRegister;
         switch (cond) {
             case 0x0: // EQ
-                if (pstate.zeroFlag == 1) {
-                    registers->programCounter = simm19 * 4;
+                if (pstate.zeroFlag) {
+                    registerStore->programCounter = simm19 * 4;
                 }
                 break;
             case 0x1: // NE
-                if (pstate.zeroFlag == 0) {
-                    registers->programCounter = simm19 * 4;
+                printf("Zero Flag: "); printb(pstate.zeroFlag); printf("\n");
+                if (!pstate.zeroFlag) {
+                    registerStore->programCounter = simm19 * 4;
+                    printf("nPC = %llx\n", registerStore->programCounter);
                 }
                 break;
             case 0xA: // GE
                 if (pstate.zeroFlag == pstate.overflowFlag) {
-                    registers->programCounter = simm19 * 4;
+                    registerStore->programCounter = simm19 * 4;
                 }
                 break;
             case 0xB: // LT
                 if (pstate.zeroFlag != pstate.overflowFlag) {
-                    registers->programCounter = simm19 * 4;
+                    registerStore->programCounter = simm19 * 4;
                 }
                 break;
             case 0xC: // GT
                 if (pstate.zeroFlag == 0 && pstate.negativeFlag == pstate.overflowFlag) {
-                    registers->programCounter = simm19 * 4;
+                    registerStore->programCounter = simm19 * 4;
                 }
                 break;
             case 0xD: // LE
                 if (!(pstate.zeroFlag == 0 && pstate.negativeFlag == pstate.overflowFlag)) {
-                    registers->programCounter = simm19 * 4;
+                    registerStore->programCounter = simm19 * 4;
                 }
                 break;
             default: // AL
-                registers->programCounter = simm19 * 4;
+                registerStore->programCounter = simm19 * 4;
                 break;
         }
     }
@@ -679,8 +704,10 @@ void processor(uint8_t *memPointer, char* filename) {
     }
 
     while (true) {
+        printf("\n-----------BEGIN CYCLE----------\n\n");
         uint32_t instruction = fetchInstruction(registerStore.programCounter, memPointer);
-        printf("In processor: current instruction - %x\n", instruction);
+        printf("PC = 0x%08llx\n", registerStore.programCounter);
+        printf("IR = 0x%x\n", instruction);
         long long op0 = (instruction >> 25) & 0xF;
 
         if (instruction == 0x8a000000 || instruction == 0) {
@@ -693,10 +720,19 @@ void processor(uint8_t *memPointer, char* filename) {
             executeDataProcessingReg(instruction, &registerStore);
         } else if (isBranch(op0)) {
             executeBranch(instruction, &registerStore);
+            registerStore.programCounter -= 4;
+            break;
         } else {
             executeDataTransfer(instruction, memPointer, &registerStore);
         }
         registerStore.programCounter += 4;
+
+        for (int i = 0; i < 31; i++) {
+            long long data = registerStore.registers[i];
+            if (data != 0) {
+                printf("X%d   =   0x%llx\n", i, data);
+            }
+        }
     }
 
     outputFile(&registerStore, &stateRegister, memPointer, filename);
