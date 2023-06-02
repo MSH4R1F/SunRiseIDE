@@ -4,10 +4,11 @@
 #include <stdint.h>
 #include <netinet/in.h>
 #include <assert.h>
+#include <math.h>
 
 // CONSTANTS
 
-#define MEMORY_COUNT 524288
+#define MEMORY_COUNT 2097152
 
 // FILE: registers.h
 
@@ -20,10 +21,10 @@ void loadMemoryFromFile(uint32_t *memPointer, char *filename);
 
 // FILE: bitwiseshift.h
 
-long long logicalLeftShift(long long number, uint32_t shift);
-long long logicalRightShift(long long number, uint32_t shift);
-long long arithmeticRightShift(long long number, uint32_t shift);
-long long rotateRight(long long number, uint32_t shift);
+long long int logicalLeftShift(long long int number, uint32_t shift, bool is64Bit);
+long long logicalRightShift(long long number, uint32_t shift, bool is64Bit);
+long long arithmeticRightShift(long long number, uint32_t shift, bool is64Bit);
+long long rotateRight(long long number, uint32_t shift, bool is64Bit);
 
 // FILE: dataProcessingImm.h
 
@@ -75,42 +76,40 @@ struct RegisterStore {
 
 // FILE: utils.c
 
-uint32_t fetchInstruction(long long address, uint32_t *memPointer) {
-    return memPointer[address / 4];
-}
-
-long long fetchData(long long address, uint32_t *memPointer, bool isDoubleWord) {
-    printf("Storing data to memory...");
-    long long data;
+long long fetchData(long long address, uint8_t *memPointer, bool isDoubleWord) {
+    int bytesCount = 4;
     if (isDoubleWord) {
-        uint32_t lsbWord = memPointer[address / 4];
-        long long msbWord = memPointer[address / 4 + 1];
-        data = (msbWord << 32) | lsbWord;
-    } else {
-        long long word = memPointer[address / 4];
-        data = word;
-        if (word & 0x80000000) {
-            long long extend = 0xFFFFFFFF;
-            data = word | (extend << 32);
-        }
+        bytesCount = 8;
+    }
+
+    long long data = 0;
+    for (int i = 0; i < bytesCount; i++) {
+        long long currentByte = memPointer[address + i];
+        uint32_t significance = 8 * i;
+        data = data | (currentByte << significance);
+        printf("data = %llx\n", data);
     }
 
     return data;
 }
 
-void storeData(long long data, long long address, uint32_t *memPointer, bool isDoubleWord) {
+uint32_t fetchInstruction(long long address, uint8_t *memPointer) {
+    uint32_t data = fetchData(address, memPointer, false);
+    printf("data %llx\n", data);
+    return data;
+}
+
+void storeData(long long data, long long address, uint8_t *memPointer, bool isDoubleWord) {
+    int bytesCount = 4;
     if (isDoubleWord) {
-        assert(address % 8 == 0); //  ensures request is segmented
+        bytesCount = 8;
+    }
 
-        uint32_t lsbWord = data & 0xFFFFFFFF;
-        uint32_t msbWord = data >> 32;
+    for (int i = 0; i < bytesCount; i++) {
+        int significance = 8 * i;
+        uint8_t currentByte = data >> significance;
 
-        memPointer[address / 4] = lsbWord;
-        memPointer[address / 4 + 1] = msbWord;
-    } else {
-        uint32_t word = data;
-
-        memPointer[address / 4] = word;
+        memPointer[address + i] = currentByte;
     }
 }
 
@@ -163,10 +162,15 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, u
     char v_val = stateRegister->overflowFlag == true ? 'V' : '-';
     fprintf(fp, "PSTATE : %c%c%c%c\n", n_val, z_val, c_val, v_val);
     fprintf(fp, "Non-Zero Memory:\n");
-    uint32_t memAddress = 0;
-    while (memPointer[memAddress] != 0) {
-        fprintf(fp, "0X%08x : %08x\n", memAddress * 4, memPointer[memAddress]);
-        memAddress++;
+    long long memAddress = 0;
+    uint32_t data = fetchData(memAddress, memPointer, false);
+    while (memAddress < MEMORY_COUNT) {
+        memAddress += 4;
+        if (data != 0) {
+            // Load 32 bit word and convert from little endian
+            fprintf(fp, "0x%08llx : %08x\n", memAddress, data);
+            data = fetchData(memAddress, memPointer, false);
+        }
     }
     fclose(fp); //Don't forget to close the file when finished
 }
@@ -175,29 +179,50 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, u
 
 #define WORDSIZE  32
 
-long long logicalLeftShift(long long number, uint32_t shift) {
-    if (shift > WORDSIZE) {
+long long logicalLeftShift(long long number, uint32_t shift, bool is64Bit) {
+    int wordSize = is64Bit ? 64 : 32;
+    if (shift > wordSize) {
         return 0;
     }
-    return number << shift;
+    if (wordSize == 32) {
+        number <<= shift;
+        return number & 0xFFFFFFFF;
+    } else {
+        return number << shift;
+    }
 }
 
-long long logicalRightShift(long long number, uint32_t shift) {
-    if (shift > WORDSIZE) {
+long long logicalRightShift(long long number, uint32_t shift, bool is64Bit) {
+    int wordSize = is64Bit ? 64 : 32;
+    if (shift > wordSize) {
         return 0;
+    }
+    if (wordSize == 32) {
+        number &= 0xFFFFFFFF;
+        return number >> shift;
     }
     return number >> shift;
 }
 
-long long arithmeticRightShift(long long number, uint32_t shift) {
-    if (shift > WORDSIZE) {
+long long arithmeticRightShift(long long number, uint32_t shift, bool is64Bit) {
+    int wordSize = is64Bit ? 64 : 32;
+    uint64_t mask = is64Bit ? 0xFFFFFFFFFFFFFFFF : 0xFFFFFFFF;
+    if (shift > wordSize) {
         return 0;
     }
-    return (int32_t) (number << shift);
+    number &= mask;
+    bool signBit = (number >> (wordSize - 1)) & 1;
+    if (signBit) {
+
+        return (mask << (wordSize - shift)) | (number >> shift);
+    }
+    return logicalRightShift(number, shift, is64Bit);
 }
 
-long long rotateRight(long long number, uint32_t shift) {
-    if (shift > WORDSIZE) {
+long long rotateRight(long long number, uint32_t shift, bool is64Bit) {
+    int wordSize = is64Bit ? 64 : 32;
+    uint64_t mask = is64Bit ? 0xFFFFFFFFFFFFFFFF : 0xFFFFFFFF;
+    if (shift > wordSize) {
         return 0;
     }
     return (number >> shift) | (number << (32 - shift));
@@ -326,15 +351,15 @@ bool isDataProcessingReg(long long op0) {
     return (op0 | 0x8) == match;
 }
 
-long long shiftFun(uint32_t shift, long long reg, uint32_t operand) {
+long long shiftFun(uint32_t shift, long long reg, uint32_t operand, bool signBit) {
     if (shift == 0) {
-        return logicalLeftShift(reg, operand);
+        return logicalLeftShift(reg, operand, signBit);
     } else if (shift == 1) {
-        return logicalRightShift(reg, operand) ;
+        return logicalRightShift(reg, operand, signBit);
     } else if (shift == 2) {
-        return arithmeticRightShift(reg, operand);
+        return arithmeticRightShift(reg, operand, signBit);
     } else {
-        return rotateRight(reg, shift);
+        return rotateRight(reg, operand, signBit);
     }
 }
 
@@ -375,7 +400,8 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
     uint32_t opc = (instruction >> 29) & 0x1;
     uint32_t rd = instruction & 0x1F;
     long long rd_val;
-    long long op2 = shiftFun(shift, rm_val, opr);
+    bool sf = instruction >> 31;
+    long long op2 = shiftFun(shift, rm_val, opr, sf);
     int multiplier = -1;
     if (opc / 2 == 0) {
         multiplier *= -1;
@@ -395,12 +421,13 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t N = (instruction >> 21) & 0x1;
     uint32_t opc = (instruction >> 29) & 0x3;
-    uint32_t operand = (instruction >> 10) & 0x1F;
+    uint32_t operand = (instruction >> 10) & 0x3F;
     uint32_t rn = (instruction >> 5) & 0x1F;
     long long rn_val = registers->registers[rn];
     uint32_t rm = (instruction >> 16) & 0x1F;
     long long rm_val = registers->registers[rm];
-    rm_val = shiftFun(shift, rm_val, operand);
+    bool sf = instruction >> 31;
+    rm_val = shiftFun(shift, rm_val, operand, sf);
     uint32_t combined_opc = (opc << 1) + N;
 
     uint32_t rd = instruction & 0x1F;
@@ -469,8 +496,6 @@ void loadStore(bool forceLoad, long long instruction, long long readAddress, uin
     uint32_t rt = instruction & 0x1F;
 
     if (isLoad) {
-        printf("makes it pasfdsahfat here...\n");
-        printf("%b\n", isDoubleWord);
         long long result = fetchData(readAddress, memPointer, isDoubleWord);
         printf("result: %llx\n", result);
         registerStore->registers[rt] = result;
