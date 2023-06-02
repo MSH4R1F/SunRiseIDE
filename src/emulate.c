@@ -244,8 +244,11 @@ long long rotateRight(long long number, uint32_t shift, bool is64Bit) {
         return 0;
     }
     number &= mask;
-    uint64_t rotatedBits = (number & ToPow2(shift)) << (wordSize - shift);
-    return ((number >> shift) | rotatedBits) & mask;
+    uint64_t rotatedBits = (number & (ToPow2(shift) - 1)) << (wordSize - shift);
+    uint64_t clearer = (ToPow2(wordSize - shift) - 1);
+    printf("rotatedBits: %lx\n", rotatedBits);
+    printf("shiftedNum: %llx\n", number >> shift);
+    return (((number >> shift) & clearer) | rotatedBits) & mask;
 }
 
 // FILE: dataProcessingImm.c
@@ -424,10 +427,16 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t operand = (instruction >> 10) & 0x3F;
     uint32_t rn = (instruction >> 5) & 0x1F;
-    long long rn_val = registers->registers[rn];
+    long long rn_val = registers->zeroRegister;
+    if (rn < 31) {
+        rn_val = registers->registers[rn];
+    }
     printf("rn_val: %llx\n", rn_val);
     uint32_t rm = (instruction >> 16) & 0x1F;
-    long long rm_val = registers->registers[rm];
+    long long rm_val = registers->zeroRegister;
+    if (rm < 31) {
+        rm_val = registers->registers[rm];
+    }
     printf("rm_val: %llx\n", rm_val);
     uint32_t opc = (instruction >> 29) & 0x3;
     uint32_t rd = instruction & 0x1F;
@@ -466,6 +475,9 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
     }
     uint32_t rm = (instruction >> 16) & 0x1F;
     long long rm_val = registers->registers[rm];
+    if (rm == 31) {
+        rm_val = registers->zeroRegister;
+    }
     bool sf = instruction >> 31;
     rm_val = shiftFun(shift, rm_val, operand, sf);
     uint32_t combined_opc = (opc << 1) + N;
