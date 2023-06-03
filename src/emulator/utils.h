@@ -7,6 +7,6 @@
 
 #include <stdlib.h>
 
-uint32_t fetchInstruction(long long programCounter, char *filename);
+uint32_t loadMemory(long long programCounter, char *filename);
 
 #endif //ARMV8_27_UTILS_H
