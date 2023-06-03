@@ -680,8 +680,12 @@ void preAndPostIndex(uint32_t instruction, uint8_t *memPointer, struct RegisterS
 }
 
 void executeLoadLiteral(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
-    printf("Executing literal...\n");
-    uint32_t simm19 = (instruction >> 5) & 0x7FFFF;
+    int simm19 = (instruction >> 5) & 0x7FFFF;
+
+    if (simm19 & 0x40000) {
+        simm19 = simm19 | 0xFFF80000;
+    }
+
     long long offset = simm19 * 4;
     long long readAddress = registers->programCounter + offset;
 
@@ -857,7 +861,7 @@ int main(int argc, char **argv) {
         processor(memPointer, argv[2]);
     } else {
         loadMemoryFromFile(memPointer,
-                           "../../armv8_testsuite/test/expected_results/general/loop01_exp.bin");
+                           "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin");
         processor(memPointer, "output.out");
     }
     free(memPointer);
