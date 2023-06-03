@@ -204,6 +204,10 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, u
     char v_val = stateRegister->overflowFlag ? 'V' : '-';
     fprintf(fp, "PSTATE : %c%c%c%c\n", n_val, z_val, c_val, v_val);
     fprintf(fp, "Non-Zero Memory:\n");
+
+    printf("0x%08llx : %08llx\n", 0x8, loadData(0x8, memPointer, false));
+    printf("0x%08llx : %08llx\n", 0xc, loadData(0xc, memPointer, false));
+
     long long memAddress = 0;
     uint32_t data = loadData(memAddress, memPointer, false);
     while (memAddress < MEMORY_COUNT) {
@@ -211,8 +215,8 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, u
         if (data != 0) {
             // Load 32 bit word and convert from little endian
             fprintf(fp, "0x%08llx : %08x\n", memAddress - 4, data);
-            data = loadData(memAddress, memPointer, false);
         }
+        data = loadData(memAddress, memPointer, false);
     }
     fclose(fp); //Don't forget to close the file when finished
 }
@@ -617,7 +621,10 @@ void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *re
 // MARK: singleDataTransfer.c
 
 void loadStore(bool forceLoad, uint32_t instruction, long long readAddress, uint8_t *memPointer, struct RegisterStore *registerStore) {
-    bool isLoad = forceLoad | (instruction >> 22) & 0x1;
+    bool isLoad = forceLoad | ((instruction >> 22) & 0x1);
+    printf("is load = ");
+    printb(isLoad);
+    printf("\n");
     bool isDoubleWord = (instruction >> 30) & 0x1;
     uint32_t rt = instruction & 0x1F;
 
@@ -625,13 +632,22 @@ void loadStore(bool forceLoad, uint32_t instruction, long long readAddress, uint
         long long result = loadData(readAddress, memPointer, isDoubleWord);
         registerStore->registers[rt] = result;
     } else {
+        printf("read address = %08llx\n", readAddress);
         storeData(registerStore->registers[rt], readAddress, memPointer, isDoubleWord);
     }
 }
 
 void executeImmediateOffset(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
+    bool sf = instruction >> 31;
+
     uint32_t xn = (instruction >> 5) & 0x1F;
-    uint64_t imm12 = (instruction >> 10) & 0x7FF;
+    uint64_t imm12 = (instruction >> 10) & 0xFFF;
+
+    if (sf) {
+        imm12 *= 8;
+    } else {
+        imm12 *= 4;
+    }
 
     long long xnValue = registers->registers[xn];
 
@@ -687,7 +703,8 @@ void executeLoadLiteral(uint32_t instruction, uint8_t *memPointer, struct Regist
     }
 
     long long offset = simm19 * 4;
-    long long readAddress = registers->programCounter + offset;
+
+    long long readAddress = (registers->programCounter) + offset;
 
     loadStore(true, instruction, readAddress, memPointer, registers);
 }
