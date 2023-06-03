@@ -73,7 +73,38 @@ struct RegisterStore {
     long long registers[31];
 };
 
-// FILE: utils.c
+// FILE: utils.
+
+bool overunderflow(long long val1, long long val2, long long result) {
+    bool sign1 = val1 < 0;
+    bool sign2 = val2 < 0;
+    bool signResult = result < 0;
+    return sign1 == sign2 && sign1 != signResult;
+}
+
+//bool carry(long long val1, long long val2, long long res, bool isPlus, bool is64Bit, bool V) {
+//    printf("CARRY - comparing %lld and %lld\n", val1, val2);
+//    uint64_t shift = is64Bit ? 63 : 31;
+//    if (isPlus) {
+//        return V;
+//    } else {
+//        return ((val1 >> shift) & 1) >= ((val2 >> shift) & 1);
+//    }
+//}
+
+bool carry(long long val1, long long val2, long long res, bool isPlus, bool is64Bit, bool V) {
+    printf("CARRY - comparing %lld and %lld\n", val1, val2);
+    uint32_t shift = is64Bit ? 63 : 31;
+    if (isPlus) {
+        return V;
+    } else {
+        if (res < val1 && val2 < val1) {
+            return false;
+        } else {
+            return ((val1 >> shift) & 1) >= ((val2 >> shift) & 1); //return true;
+        }
+    }
+}
 
 void printb(bool b) {
     if (b) {
@@ -334,6 +365,7 @@ void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *
     long long reg = loadFromRegister(rn, registerStore, true);
 
     long long res;
+    bool multiplier = -1;
     if (opc == ADD || opc == ADDS) {
         res = reg + op;
         multiplier = 1;
@@ -426,19 +458,7 @@ long long shiftFun(uint32_t shift, long long reg, uint32_t operand, bool sizeBit
     }
 }
 
-bool overunderflow(long long val1, long long val2, long long result) {
-    bool sign1 = val1 < 0;
-    bool sign2 = val2 < 0;
-    bool signResult = result < 0;
-    if (sign1 == sign2 && sign1 != signResult) {
-        return true;
-    }
-    return false;
-}
 
-bool carry(bool isPlus, bool overunderflow) {
-    return isPlus == overunderflow;
-}
 
 void executeDataProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
     uint32_t opr = (instruction >> 21) & 0xF;
@@ -475,15 +495,19 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
     uint32_t rd = instruction & 0x1F;
     long long rd_val;
     long long op2 = shiftFun(shift, rm_val, operand, sf);
-    printf("op2: %llx\n", op2);
     int multiplier = 1;
-    if (opc - 2 >= 0) {
+    if (opc >= 2) {
         multiplier = -1;
     }
     rd_val = rn_val + (multiplier * op2);
     bool signBit = rd_val >> 63;
     if (!sf) {
         rd_val &= 0xFFFFFFFF;
+        signBit = rd_val >> 31;
+
+        printf("sign bit = ");
+        printb(signBit);
+        printf("\n");
     }
     printf("rd_val: %llx\n", rd_val);
     if (opc % 2 == 1) {
@@ -494,6 +518,7 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
         registers->stateRegister->carryFlag = C;
         registers->stateRegister->overflowFlag = V;
     }
+    printf("zero_flag: %d\n", registers->stateRegister->zeroFlag);
     registers->registers[rd] = rd_val;
 }
 
