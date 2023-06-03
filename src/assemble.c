@@ -10,13 +10,3 @@ int main(int argc, char **argv) {
     printf("%lld\n", word);
     return EXIT_SUCCESS;
 }
-
-//while (true) {
-//    if (true) {
-//        while (true) {
-//            if (true) {
-//                while (true)
-//            }
-//        }
-//    }
-//}
