@@ -472,7 +472,7 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
         signBit = rd_val >> 31 & 0x1;
     }
 
-    if (opc % 2 == 1) {
+    if (opc == ADDS || opc == SUBS) {
         bool V = overunderflow(rn_val, multiplier * op2, rd_val);
         bool C = carry(rn_val, op2, multiplier == 1, sf);
         registers->stateRegister->negativeFlag = signBit;
@@ -483,6 +483,17 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
 
     storeToRegister(rd, rd_val, registers, sf);
 }
+
+enum OpType {
+    AND,
+    BIC,
+    ORR,
+    ORN,
+    EOR,
+    EON,
+    ANDS,
+    BICS
+};
 
 void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
     uint32_t shift = (instruction >> 22) & 0x3;
@@ -518,10 +529,10 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
         case EOR:
             rd_val = rn_val ^ rm_val;
             break;
-        case 5:
+        case EON:
             rd_val = rn_val ^ ~rm_val;
             break;
-        case 6:
+        case ANDS:
             rd_val = rn_val & rm_val;
             bool signBit = rd_val >> (31 + sf * 32);
             registers->stateRegister->negativeFlag = signBit;
@@ -529,7 +540,7 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
             registers->stateRegister->carryFlag = false;
             registers->stateRegister->overflowFlag = false;
             break;
-        case 7:
+        case BICS:
             rd_val = rn_val & ~rm_val;
             bool signBit2 = (rd_val >> (31 + sf * 32)) & 1;
             registers->stateRegister->negativeFlag = signBit2;
@@ -730,21 +741,21 @@ void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
                     registerStore->programCounter += 4;
                 }
                 break;
-            case 0xB: // LT
+            case LT: // LT
                 if (pstate->negativeFlag != pstate->overflowFlag) {
                     registerStore->programCounter += simm19 * 4;
                 } else {
                     registerStore->programCounter += 4;
                 }
                 break;
-            case 0xC: // GT
+            case GT: // GT
                 if (pstate->zeroFlag == 0 && pstate->negativeFlag == pstate->overflowFlag) {
                     registerStore->programCounter += simm19 * 4;
                 } else {
                     registerStore->programCounter += 4;
                 }
                 break;
-            case 0xD: // LE
+            case LE: // LE
                 if (!(pstate->zeroFlag == 0 && pstate->negativeFlag == pstate->overflowFlag)) {
                     registerStore->programCounter += simm19 * 4;
                 } else {
