@@ -195,7 +195,6 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, u
 }
 
 void outputTerminal(struct RegisterStore *registers, struct PSTATE *stateRegister, uint8_t *memPointer) {
-    FILE *fp;
     printf("Registers:\n");
     for (int i = 0; i < 31; i++) {
         printf("X%02d    = %016llx\n", i, registers->registers[i]);
@@ -301,8 +300,6 @@ long long rotateRight(long long number, uint32_t shift, bool is64Bit) {
     number &= mask;
     uint64_t rotatedBits = (number & (ToPow2(shift) - 1)) << (wordSize - shift);
     uint64_t clearer = (ToPow2(wordSize - shift) - 1);
-    printf("rotatedBits: %lx\n", rotatedBits);
-    printf("shiftedNum: %llx\n", number >> shift);
     return (((number >> shift) & clearer) | rotatedBits) & mask;
 }
 
@@ -378,7 +375,6 @@ void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *
         registerStore->stateRegister->zeroFlag = res == 0;
 
         printb(registerStore->stateRegister->negativeFlag);
-        printf("\n");
 
         bool V = overunderflow(reg, multiplier * op, res);
         bool C = carry(reg, op, opc == ADDS, sf); //ADDS
