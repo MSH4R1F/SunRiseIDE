@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <netinet/in.h>
 #include <assert.h>
 
 // CONSTANTS
@@ -82,20 +81,11 @@ bool overunderflow(long long val1, long long val2, long long result) {
     return sign1 == sign2 && sign1 != signResult;
 }
 
-//bool carry(long long val1, long long val2, long long res, bool isPlus, bool is64Bit, bool V) {
-//    printf("CARRY - comparing %lld and %lld\n", val1, val2);
-//    uint64_t shift = is64Bit ? 63 : 31;
-//    if (isPlus) {
-//        return V;
-//    } else {
-//        return ((val1 >> shift) & 1) >= ((val2 >> shift) & 1);
-//    }
-//}
 
 bool carry(long long val1, long long val2, bool isPlus, bool is64Bit) {
     uint64_t max = is64Bit ? UINT64_MAX : UINT32_MAX;
     if (isPlus) {
-        return V;
+        return max - (uint64_t) val1 < (uint64_t) val2;
     } else {
         return (uint64_t) val2 <= (uint64_t) val1;
     }
@@ -400,7 +390,7 @@ void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *
         printf("\n");
 
         bool V = overunderflow(reg, multiplier * op, res);
-        bool C = carry(reg, op, res, opc == ADDS, sf, V); //ADDS
+        bool C = carry(reg, op, opc == ADDS, sf); //ADDS
         registerStore->stateRegister->carryFlag = C;
         registerStore->stateRegister->overflowFlag = reg > 0 && res < 0;
         // if (opc == ADDS) {
@@ -506,7 +496,7 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
 
     if (opc % 2 == 1) {
         bool V = overunderflow(rn_val, multiplier * op2, rd_val);
-        bool C = carry(rn_val, rm_val, rd_val, multiplier == 1, sf, V);
+        bool C = carry(rn_val, op2, multiplier == 1, sf);
         registers->stateRegister->negativeFlag = signBit;
         registers->stateRegister->zeroFlag = rd_val == 0;
         registers->stateRegister->carryFlag = C;
@@ -523,7 +513,6 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
  * */
 
 void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
-    printf("executing logic processing...\n");
 
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t N = (instruction >> 21) & 0x1;
@@ -688,7 +677,6 @@ void executeLoadLiteral(uint32_t instruction, uint8_t *memPointer, struct Regist
 }
 
 void executeDataTransfer(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registerStore) {
-    printf("Executing data transfer...\n");
     bool isLiteral = (instruction >> 31) == 0;
     bool isImmediate = (instruction >> 24) & 1;
     if (isLiteral) {
@@ -724,7 +712,6 @@ void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
 
         if (simm26 & 0x8000000) {
             uint64_t signExtend = 0x3FFFFFFFFF << 26;
-            printf("signExtend    = %0xllx\n", signExtend);
             simm26 = simm26 | signExtend;
         }
 
@@ -742,12 +729,10 @@ void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
             simm19 = simm19 | signExtend;
         }
 
-        printf("simm19 = %08llx\n", simm19);
 
         struct PSTATE *pstate = registerStore->stateRegister;
         switch (cond) {
             case 0x0: // EQ
-                printf("branch equality\n");
                 if (pstate->zeroFlag) {
                     registerStore->programCounter += simm19 * 4;
                 } else {
@@ -755,10 +740,8 @@ void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
                 }
                 break;
             case 0x1: // NE
-                printf("Zero Flag: "); printb(pstate->zeroFlag); printf("\n");
                 if (!pstate->zeroFlag) {
                     registerStore->programCounter += simm19 * 4;
-                    printf("nPC = %llx\n", registerStore->programCounter);
                 } else {
                     registerStore->programCounter += 4;
                 }
