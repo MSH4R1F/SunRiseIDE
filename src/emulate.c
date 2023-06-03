@@ -374,19 +374,10 @@ void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *
         registerStore->stateRegister->negativeFlag = res < 0;
         registerStore->stateRegister->zeroFlag = res == 0;
 
-        printb(registerStore->stateRegister->negativeFlag);
-
         bool V = overunderflow(reg, multiplier * op, res);
         bool C = carry(reg, op, opc == ADDS, sf); //ADDS
         registerStore->stateRegister->carryFlag = C;
         registerStore->stateRegister->overflowFlag = reg > 0 && res < 0;
-        // if (opc == ADDS) {
-        //     registerStore->stateRegister->carryFlag = reg > 0 && res < 0;
-        //     registerStore->stateRegister->overflowFlag = reg > 0 && res < 0;
-        // } else {
-        //     registerStore->stateRegister->carryFlag = !(reg < 0 && res > 0);
-        //     registerStore->stateRegister->overflowFlag = reg < 0 && res > 0;
-        // }
     }
 
     storeToRegister(rd, res, registerStore, sf);
@@ -507,24 +498,24 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
     long long rm_val = loadFromRegister(rm, registers, sf);
 
     rm_val = shiftFun(shift, rm_val, operand, sf);
-    uint32_t combined_opc = (opc << 1) + N;
+    enum OpType combined_opc = (opc << 1) + N;
 
     uint32_t rd = instruction & 0x1F;
     long long rd_val = 0;
     switch (combined_opc) {
-        case 0:
+        case AND:
             rd_val = rn_val & rm_val;
             break;
-        case 1:
+        case BIC:
             rd_val = rn_val & ~rm_val;
             break;
-        case 2:
+        case ORR:
             rd_val = rn_val | rm_val;
             break;
-        case 3:
+        case ORN:
             rd_val = rn_val | ~rm_val;
             break;
-        case 4:
+        case EOR:
             rd_val = rn_val ^ rm_val;
             break;
         case 5:
@@ -675,16 +666,25 @@ bool isBranch(long long op0) {
     return (op0 | 0x1) == match;
 }
 
-enum offsetType {
+enum OffsetType {
     UNCONDITIONAL,
     CONDITIONAL,
     INVAL,
     REGISTER
 };
 
-void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
-    enum offsetType branchType = instruction >> 30 & 0x3;
+enum BranchCondition {
+    EQ = 0x0,
+    NE = 0x1,
+    GE = 0xA,
+    LT = 0xB,
+    GT = 0xC,
+    LE = 0xD
+};
 
+void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
+    enum OffsetType branchType = instruction >> 30 & 0x3;
+    // 
     if (branchType == UNCONDITIONAL) {
         long long simm26 = (instruction & 0x3FFFFFF) << 2; // 000101 + 26 bits simm26
 
@@ -698,7 +698,7 @@ void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
         uint32_t xn = (instruction >> 5) & 0x1F;
         registerStore->programCounter = loadFromRegister(xn, registerStore, true);
     } else {
-        uint32_t cond = instruction & 0xF;
+        enum BranchCondition cond = instruction & 0xF;
 
         long long simm19 = ((instruction >> 5) & 0x7FFFF);
 
@@ -707,24 +707,23 @@ void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
             simm19 = simm19 | signExtend;
         }
 
-
         struct PSTATE *pstate = registerStore->stateRegister;
         switch (cond) {
-            case 0x0: // EQ
+            case EQ: // EQ
                 if (pstate->zeroFlag) {
                     registerStore->programCounter += simm19 * 4;
                 } else {
                     registerStore->programCounter += 4;
                 }
                 break;
-            case 0x1: // NE
+            case NE: // NE
                 if (!pstate->zeroFlag) {
                     registerStore->programCounter += simm19 * 4;
                 } else {
                     registerStore->programCounter += 4;
                 }
                 break;
-            case 0xA: // GE
+            case GE: // GE
                 if (pstate->zeroFlag == pstate->overflowFlag) {
                     registerStore->programCounter += simm19 * 4;
                 } else {
