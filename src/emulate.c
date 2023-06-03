@@ -341,7 +341,7 @@ bool isArithmeticProcessing(long long opi) {
 void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *registerStore) {
     uint32_t rd = instruction & 0x1F;
     uint32_t rn = (instruction >> 5) & 0x1F;
-    uint32_t sf = instruction >> 31;
+        uint32_t sf = instruction >> 31;
 
     uint32_t imm12 = (instruction >> 10) & 0xFFF;
     bool sh = (instruction >> 22) & 0x1;
