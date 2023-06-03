@@ -20,8 +20,8 @@ void loadMemoryFromFile(uint8_t *memPointer, char *filename);
 
 // FILE: bitwiseshift.h
 
-long long int logicalLeftShift(long long int number, uint32_t shift, bool is64Bit);
-long long logicalRightShift(long long number, uint32_t shift, bool is64Bit);
+uint64_t logicalLeftShift(uint64_t number, uint32_t shift, bool is64Bit);
+uint64_t logicalRightShift(uint64_t number, uint32_t shift, bool is64Bit);
 long long arithmeticRightShift(long long number, uint32_t shift, bool is64Bit);
 long long rotateRight(long long number, uint32_t shift, bool is64Bit);
 
@@ -213,7 +213,7 @@ long long logicalLeftShift(long long number, uint32_t shift, bool is64Bit) {
     }
 }
 
-long long logicalRightShift(long long number, uint32_t shift, bool is64Bit) {
+uint64_t logicalRightShift(uint64_t number, uint32_t shift, bool is64Bit) {
     int wordSize = is64Bit ? 64 : 32;
     if (shift > wordSize) {
         return 0;
@@ -323,6 +323,7 @@ void executeArithmeticProcessingImm(long long instruction, struct RegisterStore 
     long long res;
     if (opc == ADD || opc == ADDS) {
         res = reg + op;
+        multiplier = 1;
     } else {
         res = reg - op;
     }
@@ -338,13 +339,17 @@ void executeArithmeticProcessingImm(long long instruction, struct RegisterStore 
         printb(registerStore->stateRegister.negativeFlag);
         printf("\n");
 
-        if (opc == ADDS) {
-            registerStore->stateRegister.carryFlag = reg > 0 && res < 0;
-            registerStore->stateRegister.overflowFlag = reg > 0 && res < 0;
-        } else {
-            registerStore->stateRegister.carryFlag = !(reg < 0 && res > 0);
-            registerStore->stateRegister.overflowFlag = reg < 0 && res > 0;
-        }
+        bool V = overunderflow(reg, multiplier * op, res);
+        bool C = carry(reg, op, res, opc == ADDS, sf, V); //ADDS
+        registerStore->stateRegister->carryFlag = C;
+        registerStore->stateRegister->overflowFlag = reg > 0 && res < 0;
+        // if (opc == ADDS) {
+        //     registerStore->stateRegister->carryFlag = reg > 0 && res < 0;
+        //     registerStore->stateRegister->overflowFlag = reg > 0 && res < 0;
+        // } else {
+        //     registerStore->stateRegister->carryFlag = !(reg < 0 && res > 0);
+        //     registerStore->stateRegister->overflowFlag = reg < 0 && res > 0;
+        // }
     }
 
     if (rd < 31) {
@@ -394,15 +399,15 @@ bool isDataProcessingReg(long long op0) {
     return (op0 | 0x8) == match;
 }
 
-long long shiftFun(uint32_t shift, long long reg, uint32_t operand, bool signBit) {
+long long shiftFun(uint32_t shift, long long reg, uint32_t operand, bool sizeBit) {
     if (shift == 0) {
-        return logicalLeftShift(reg, operand, signBit);
+        return logicalLeftShift(reg, operand, sizeBit);
     } else if (shift == 1) {
-        return logicalRightShift(reg, operand, signBit);
+        return logicalRightShift(reg, operand, sizeBit);
     } else if (shift == 2) {
-        return arithmeticRightShift(reg, operand, signBit);
+        return arithmeticRightShift(reg, operand, sizeBit);
     } else {
-        return rotateRight(reg, operand, signBit);
+        return rotateRight(reg, operand, sizeBit);
     }
 }
 
@@ -441,13 +446,15 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
     if (rn < 31) {
         rn_val = registers->registers[rn];
     }
-    printf("rn_val: %llx\n", rn_val);
     uint32_t rm = (instruction >> 16) & 0x1F;
     long long rm_val = registers->zeroRegister;
     if (rm < 31) {
         rm_val = registers->registers[rm];
     }
-    printf("rm_val: %llx\n", rm_val);
+    if (!sf) {
+        rm_val &= 0xFFFFFFFF;
+        rn_val &= 0xFFFFFFFF;
+    }
     uint32_t opc = (instruction >> 29) & 0x3;
     uint32_t rd = instruction & 0x1F;
     long long rd_val;
@@ -459,10 +466,11 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
         multiplier = -1;
     }
     rd_val = rn_val + (multiplier * op2);
-    printf("%x", rd_val);
-    if (~sf) {
+    bool signBit = rd_val >> 63;
+    if (!sf) {
         rd_val &= 0xFFFFFFFF;
     }
+    printf("rd_val: %llx\n", rd_val);
     if (opc % 2 == 1) {
         bool V = overunderflow(rn_val, multiplier * op2, rd_val);
         registers->stateRegister.negativeFlag = rd_val < 0;
@@ -484,73 +492,82 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
         rn_val = registers->registers[rn];
     }
     uint32_t rm = (instruction >> 16) & 0x1F;
-    long long rm_val = registers->registers[rm];
-    if (rm == 31) {
-        rm_val = registers->zeroRegister;
+    long long rm_val = registers->zeroRegister;
+    if (rm < 31) {
+        rm_val = registers->registers[rm];
     }
     bool sf = instruction >> 31;
+    uint64_t mask = sf ? 0xFFFFFFFFFFFFFFFF : 0xFFFFFFFF;
     rm_val = shiftFun(shift, rm_val, operand, sf);
     uint32_t combined_opc = (opc << 1) + N;
     uint32_t rd = instruction & 0x1F;
-    if (rd < 31) {
-        long long rd_val = 0;
-        switch (combined_opc) {
-            case 0:
-                rd_val = rn_val & rm_val;
-                break;
-            case 1:
-                rd_val = rn_val & ~rm_val;
-                break;
-            case 2:
-                printf("rn_val: %llx\n", rn_val);
-                printf("rm_val: %llx\n", rm_val);
-                rd_val = rn_val | rm_val;
-                break;
-            case 3:
-                rd_val = rn_val | ~rm_val;
-                break;
-            case 4:
-                rd_val = rn_val ^ ~rm_val;
-                break;
-            case 5:
-                rd_val = rn_val ^ rm_val;
-                break;
-            case 6:
-                rd_val = rn_val & rm_val;
-                registers->stateRegister.negativeFlag = rd_val < 0;
-                registers->stateRegister.zeroFlag = rd_val == 0;
-                registers->stateRegister.carryFlag = false;
-                registers->stateRegister.overflowFlag = false;
-                break;
-            case 7:
-                rd_val = rn_val & ~rm_val;
-                registers->stateRegister.negativeFlag = rd_val < 0;
-                registers->stateRegister.zeroFlag = rd_val == 0;
-                registers->stateRegister.carryFlag = false;
-                registers->stateRegister.overflowFlag = false;
-                break;
-        }
-        registers->registers[rd] = rd_val;
+    long long rd_val = 0;
+    switch (combined_opc) {
+        case 0:
+            rd_val = rn_val & rm_val;
+            break;
+        case 1:
+            rd_val = rn_val & ~rm_val;
+            break;
+        case 2:
+            rd_val = rn_val | rm_val;
+            break;
+        case 3:
+            rd_val = rn_val | ~rm_val;
+            break;
+        case 4:
+            rd_val = rn_val ^ rm_val;
+            break;
+        case 5:
+            rd_val = rn_val ^ ~rm_val;
+            break;
+        case 6:
+            rd_val = rn_val & rm_val;
+            bool signBit = rd_val >> (31 + sf * 32);
+            printf("rd_val: %llx\n", rd_val);
+            registers->stateRegister->negativeFlag = signBit;
+            registers->stateRegister->zeroFlag = rd_val == 0;
+            registers->stateRegister->carryFlag = false;
+            registers->stateRegister->overflowFlag = false;
+            break;
+        case 7:
+            rd_val = rn_val & ~rm_val;
+            bool signBit2 = (rd_val >> (31 + sf * 32)) & 1;
+            registers->stateRegister->negativeFlag = signBit2;
+            registers->stateRegister->zeroFlag = rd_val == 0;
+            registers->stateRegister->carryFlag = false;
+            registers->stateRegister->overflowFlag = false;
+            break;
     }
+
+    if (rd < 31) {
+        registers->registers[rd] = rd_val & mask;
+    }
+
 }
 
 void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
+    bool sf = instruction >> 31;
+    uint64_t mask = sf ? 0xFFFFFFFFFFFFFFFF : 0xFFFFFFFF;
     uint32_t rm = (instruction >> 16) & 0x1F;
-    uint32_t x = ((instruction >> 15) & 0x1) == 0x1 ? -1 : 1;
-    long long rm_val = registers->registers[rm];
-    uint32_t ra = (instruction >> 10) & 0x1F;
+    int x = ((instruction >> 15) & 0x1) == 0x1 ? -1 : 1;
+    long long rm_val = registers->zeroRegister;
+    if (rm < 31) {
+        rm_val = registers->registers[rm];
+    }
     uint32_t rn = (instruction >> 5) & 0x1F;
-    long long rn_val = registers->registers[rn];
+    long long rn_val = registers->zeroRegister;
     if (rn < 31) {
         rn_val = registers->registers[rn];
     }
     uint32_t rd = instruction & 0x1F;
-    long long ra_val = 0;
-    if (ra != 0x1F) {
+    uint32_t ra = (instruction >> 10) & 0x1F;
+    long long ra_val = registers->zeroRegister;
+    if (ra < 31) {
         ra_val = registers->registers[ra];
     }
     long long rd_val = ra_val + x * (rn_val * rm_val);
-    registers->registers[rd] = rd_val;
+    registers->registers[rd] = rd_val & mask;
 }
 
 // MARK: singleDataTransfer.c
@@ -673,7 +690,7 @@ void executeBranch(long long instruction, struct RegisterStore *registerStore) {
     } else {
         uint32_t cond = instruction & 0xF;
 
-        long long simm19 = 4 * ((instruction >> 5) & 0x7FFFF);
+        long long simm19 = ((instruction >> 5) & 0x7FFFF);
 
         if (simm19 & 0x100000) {
             uint64_t signExtend = 0x7FFFFFFFFFF << 21;
@@ -692,6 +709,8 @@ void executeBranch(long long instruction, struct RegisterStore *registerStore) {
                 if (!pstate.zeroFlag) {
                     registerStore->programCounter = simm19 * 4;
                     printf("nPC = %llx\n", registerStore->programCounter);
+                } else {
+                    registerStore->programCounter += 4;
                 }
                 break;
             case 0xA: // GE
@@ -726,7 +745,7 @@ void processor(uint8_t *memPointer, char* filename) {
     struct RegisterStore registerStore;
     registerStore.programCounter = 0;
     registerStore.zeroRegister = 0;
-    registerStore.stateRegister = stateRegister;
+    registerStore.stateRegister = &stateRegister;
 
     for (int i = 0; i < sizeof(registerStore.registers) / sizeof(registerStore.registers[0]); i++) {
         registerStore.registers[i] = 0;
@@ -770,11 +789,9 @@ void processor(uint8_t *memPointer, char* filename) {
 int main(int argc, char **argv) {
     // Callocs memory of size 2MB
     uint8_t *memPointer = allocateMemory();
-    bool isCommandLine = 1;
-    if (isCommandLine) {
-        loadMemoryFromFile(memPointer,
-                           argv[1]); //replace filename with "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin"
-        processor(memPointer, argv[2]); //replace filename with second output.out
+    if (argc > 1) {
+        loadMemoryFromFile(memPointer,argv[1]);
+        processor(memPointer, argv[2]);
     } else {
         loadMemoryFromFile(memPointer,
                            "../../armv8_testsuite/test/expected_results/shifts/ror2_exp.bin"); //replace filename with "../../armv8_testsuite/test/expected_results/general/ldr01_exp.bin"
