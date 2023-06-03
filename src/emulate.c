@@ -91,14 +91,6 @@ bool carry(long long val1, long long val2, bool isPlus, bool is64Bit) {
     }
 }
 
-void printb(bool b) {
-    if (b) {
-        printf("true");
-    } else {
-        printf("false");
-    }
-}
-
 long long loadData(long long address, uint8_t *memPointer, bool isDoubleWord) {
     int bytesCount = 4;
     if (isDoubleWord) {
@@ -169,7 +161,6 @@ void loadMemoryFromFile(uint8_t *memPointer, char *filename) {
             return;
         }
 
-        // value = ntohl(value);
         memPointer[counter] = value;
         counter += 1;
     }
@@ -506,14 +497,7 @@ void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *
     storeToRegister(rd, rd_val, registers, sf);
 }
 
-/*
- * enum
- *
- *
- * */
-
 void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
-
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t N = (instruction >> 21) & 0x1;
     uint32_t opc = (instruction >> 29) & 0x3;
@@ -623,7 +607,6 @@ void executeImmediateOffset(uint32_t instruction, uint8_t *memPointer, struct Re
 }
 
 void executeRegisterOffset(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
-
     uint32_t xn = (instruction >> 5) & 0x1F;
     uint32_t xm = (instruction >> 16) & 0x1F;
 
@@ -636,7 +619,6 @@ void executeRegisterOffset(uint32_t instruction, uint8_t *memPointer, struct Reg
 }
 
 void preAndPostIndex(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
-
     uint32_t xn = (instruction >> 5) & 0x1F;
     long long xnValue = loadFromRegister(xn, registers, true);
 
@@ -793,10 +775,8 @@ void processor(uint8_t *memPointer, char* filename, int argc) {
     }
 
     while (true) {
-        printf("\n-----------BEGIN CYCLE %lld----------\n\n", registerStore.programCounter);
         uint32_t instruction = fetchInstruction(registerStore.programCounter, memPointer);
-        printf("PC = 0x%08llx\n", registerStore.programCounter);
-        printf("IR = 0x%x\n", instruction);
+
         long long op0 = (instruction >> 25) & 0xF;
 
         if (instruction == 0x8a000000 || instruction == 0) {
@@ -815,14 +795,6 @@ void processor(uint8_t *memPointer, char* filename, int argc) {
         } else {
             executeDataTransfer(instruction, memPointer, &registerStore);
             registerStore.programCounter += 4;
-        }
-
-
-        for (int i = 0; i < 31; i++) {
-            long long data = registerStore.registers[i];
-            if (data != 0) {
-                printf("X%d   =   0x%llx\n", i, data);
-            }
         }
     }
     if (argc == 2) {
