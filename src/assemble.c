@@ -204,8 +204,93 @@ bool isDataTransfer(char *opcode) {
     return strcmp(opcode, "ldr") == 0 || strcmp(opcode, "str") == 0;
 }
 
+uint32_t assembleLoadLiteral(char *opcode, char **operands, long long currentAddress, uint32_t sf, uint32_t destReg) {
+    uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
+    instruction |= (sf << 30);                              //sf bit
+    instruction |= (0b011000 << 23);                        //bits 24 to 29 are constant when not unsigned offset
+    instruction |= encodeLiteralToOffset(operands[1], currentAddress, );                 //type of data transfer
+    instruction |= (0 << 21);                               //21st bit if 0 for pre/post-index
+    instruction |= (encodeSimm(operands[2]) << 12); //simm9
+    instruction |= (0b01 << 10);                            //I and neighbouring bit
+    instruction |= (srcReg << 5);                           //source register
+    instruction |= destReg;                                 //destination register
+    return instruction;
+}
+
+uint32_t assemblePostIndex(char **operands, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
+    uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
+    instruction |= (sf << 30);                              //sf bit
+    instruction |= (0b1110000 << 23);                       //bits 23 to 29 are constant when not unsigned offset
+    instruction |= (instructionType << 22);                 //type of data transfer
+    instruction |= (0 << 21);                               //21st bit if 0 for pre/post-index
+    instruction |= (encodeSimm(operands[2]) << 12); //simm9
+    instruction |= (0b01 << 10);                            //I and neighbouring bit
+    instruction |= (srcReg << 5);                           //source register
+    instruction |= destReg;                                 //destination register
+    return instruction;
+}
+
+uint32_t assemblePreIndex(char *simmOffset, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
+    uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
+    instruction |= (sf << 30);                              //sf bit
+    instruction |= (0b1110000 << 23);                       //bits 23 to 29 are constant when not unsigned offset
+    instruction |= (instructionType << 22);                 //type of data transfer
+    instruction |= (0 << 21);                               //21st bit if 0 for pre/post-index
+    instruction |= (encodeSimm(simmOffset) << 12); //simm9
+    instruction |= (0b11 << 10);                            //I and neighbouring bit
+    instruction |= (srcReg << 5);                           //source register
+    instruction |= destReg;                                 //destination register
+    return instruction;
+}
+
+uint32_t assembleUnsignedOffset(char *immOffset, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
+    uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
+    instruction |= (sf << 30);                              //sf bit
+    instruction |= (0b1110010 << 23);                       //bits 23 to 29 are constant
+    instruction |= (instructionType << 22);                 //type of data transfer
+    instruction |= (encodeImm(immOffset) << 10);    //imm12
+    instruction |= (srcReg << 5);                           //source register
+    instruction |= destReg;                                 //destination register
+    return instruction;
+}
+
+uint32_t assembleRegisterOffset(char **operands, uint32_t destReg, uint32_t offsetReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
+    uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
+    instruction |= (sf << 30);                              //sf bit
+    instruction |= (0b1110000 << 23);                       //bits 23 to 29 are constant when not unsigned offset
+    instruction |= (instructionType << 22);                 //type of data transfer
+    instruction |= (1 << 21);                               //21st bit if 0 for pre/post-index
+    instruction |= offsetReg;                               //destination register
+    instruction |= (0b011010 << 10);                        //I and neighbouring bit
+    instruction |= (srcReg << 5);                           //source register
+    instruction |= destReg;                                 //destination register
+    return instruction;
+}
+
 uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, long long currentAddress) {
-    return 0;
+    uint32_t destReg = encodeRegister(operands[0]);
+    uint32_t sf = operands[0][0] == 'W' ? 0 : 1;
+    if (operandLength == 2) {
+        return assembleLoadLiteral(opcode, operands, currentAddress, sf, destReg);
+    } else {
+        uint32_t instructionType = strcmp(opcode, "ldr") == 0 ? 1 : 0;
+        char* srcRegBeforeFormatting = operands[1]++;
+        uint32_t srcReg = encodeRegister(srcRegBeforeFormatting);
+        if (operands[1][strlen(operands[1]) - 1] == ']') {
+            assemblePostIndex(operands, destReg, sf, srcReg, instructionType);
+        } else if (operands[2][strlen(operands[2]) - 1] == '!') {
+            char *simmOffset = operands[2];
+            simmOffset[strlen(simmOffset) - 2] = '\0';
+            assemblePreIndex(simmOffset, destReg, sf, srcReg, instructionType);
+        } else if (operands[2][strlen(operands[2]) - 1] == ']') {
+            char *immOffset = operands[2];
+            immOffset[strlen(immOffset) - 1] = '\0';
+            assembleUnsignedOffset(immOffset, destReg, sf, srcReg, instructionType);
+        } else {
+            uint32_t offsetReg = encodeRegister(operands[2]);
+            assembleRegisterOffset(operands, destReg, offsetReg, sf, srcReg, instructionType);
+        }
+    }
 }
 
 // FILE: branch.c
