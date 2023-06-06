@@ -1,9 +1,285 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <assert.h>
+#include <string.h>
+
+#define MEMORY_COUNT  2097152
+#define ASSEMBLY_SIZE 10
+
+// FILE branch.h
+
+bool isLabel(char *opcode);
+
+// FILE: utils.c
+
+void loadAssemblyFromFile(char **assemblyArray[60], char *filename) {
+
+}
+
+void writeMachineToFile(uint8_t *memPointer, char* filename) {
+
+}
+
+void storeData(long long data, long long address, uint8_t *memPointer, bool isDoubleWord) {
+    int bytesCount = 4;
+    if (isDoubleWord) {
+        bytesCount = 8;
+    }
+
+    for (int i = 0; i < bytesCount; i++) {
+        int significance = 8 * i;
+        uint8_t currentByte = data >> significance;
+
+        memPointer[address + i] = currentByte;
+    }
+}
+
+uint8_t *allocateMemory(void) {
+    uint8_t *memPointer = calloc(MEMORY_COUNT, sizeof(uint8_t));
+    assert( memPointer != NULL );
+    return memPointer;
+}
+
+// FILE: labelMap.c
+
+typedef struct {
+    char *label;
+    long long address;
+} LabelAddressMap;
+
+LabelAddressMap *allocateLabelEntry(void) {
+    LabelAddressMap *entry = malloc( sizeof(LabelAddressMap) );
+    return entry;
+}
+
+LabelAddressMap **allocateLabelMap(void) {
+    LabelAddressMap **mapPointer = malloc( 10 * sizeof(LabelAddressMap *) );
+
+    for (int i = 0; i < ASSEMBLY_SIZE; i++) {
+        mapPointer[i] = allocateLabelEntry();
+    }
+
+    return mapPointer;
+}
+
+void freeLabelMap(LabelAddressMap **mapPointer) {
+    for (int i = 0; i < ASSEMBLY_SIZE; i++) {
+        free(mapPointer[i]);
+    }
+    free(mapPointer);
+}
+
+void computeLabelMap(char **assemblyArray, LabelAddressMap **labelMap) {
+    int i = 0;
+    long long line = 0;
+    long long address = 0;
+
+    while (assemblyArray[line] != NULL) {
+
+        if (isLabel(assemblyArray[line])) {
+            labelMap[i]->label = assemblyArray[line];
+            labelMap[i]->address = address;
+            i++;
+        } else {
+            address += 4;
+        }
+
+        line += 1;
+    }
+}
+
+long long getMapAddress(LabelAddressMap **mapPointer, char *label) {
+    for (int i = 0; mapPointer[i] != NULL; i++) {
+        if (strstr(mapPointer[i]->label, label)) {
+            return mapPointer[i]->address;
+        }
+    }
+    return 0;
+}
+
+bool mapContainsLabel(char *label, LabelAddressMap **mapPointer) {
+    for (int i = 0; mapPointer[i] != NULL; i++) {
+        if (strstr(mapPointer[i]->label, label)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// token utilities
+
+char *extractOpcode(char *instruction) {
+    char *line_copy = strdup(instruction);
+    char *opcode = strtok(line_copy, " ");
+    if (opcode != NULL) {
+        opcode = strdup(opcode);
+    }
+    free(line_copy);
+    return opcode;
+}
+
+// MARK: FIX NAME TO CAMEL CASE, BIT VAGUE AS WELL
+char *extract_ith_opcode(char *instruction) {
+    char *line_copy = strdup(instruction);
+    char *token = strtok(line_copy, " ");
+    for (int j = 1; j < 1 && token != NULL;) {
+        token = strtok(NULL, " ");
+    }
+    char *result = NULL;
+    if (token != NULL) {
+        result = strdup(token);
+    }
+    free(line_copy);
+    return result;
+}
+
+// FILE: dataProcessing.c
+
+bool isDataProcessing(char *opcode) {
+
+}
+
+uint32_t assembleDataProcessing(char *opcode, char **operands) {
+    uint32_t instruction = 0;
+
+    return instruction;
+}
+
+// FILE: dataTransfer.c
+
+bool isDataTransfer(char *opcode) {
+
+}
+
+uint32_t assembleDataTransfer(char *opcode, char **operands) {
+    return 0;
+}
+
+// FILE: branch.c
+
+bool isBranch(char *opcode) {
+
+}
+
+bool isLabel(char *opcode) {
+    return strstr(opcode, ":");
+}
+
+char *getCondition(char *opcode) {
+    char opcodeDefinite[8];
+    int i = 0;
+    while (opcode[i] != '\0') {
+        opcodeDefinite[i] = opcode[i];
+        i++;
+    }
+
+    char* rest = opcodeDefinite;
+    char* token = strtok_r(rest, ".", &rest);
+    token = strtok_r(rest, ".", &rest);
+
+    return token;
+}
+
+uint32_t assembleBranch(char *opcode, char **operands) {// , LabelAddressMap **labelMap) {
+    uint32_t instruction = 0;
+    if (strstr(opcode, ".")) {
+        char *condition = getCondition(opcode);
+    } else {
+        if (strcmp(opcode, "br") == 0) {
+            printf("was undonditional register branch");
+        } else {
+            printf("was unconditional immediate branch");
+        }
+    }
+    return instruction;
+}
+
+// directive.c
+
+bool isDirective(char *opcode) {
+
+}
+
+uint32_t assembleDirective(char *opcode, char **operands) {
+    return 0;
+}
+
+// assemble.c
+
+bool isVoid(char *opcode) {
+
+}
+
+void assemble(char **assemblyArray, uint8_t *memoryArray) {
+    LabelAddressMap **labelMap = allocateLabelMap();
+    computeLabelMap(assemblyArray, labelMap);
+
+    long long address = 0;
+    int line = 0;
+
+    while (assemblyArray[line] != NULL) {
+        line++;
+        if (isLabel(assemblyArray[line])) {
+            continue;
+        }
+
+        char *currentInstruction = assemblyArray[line];
+        char *opcode = extractOpcode(currentInstruction);
+        char **operands = malloc(3 * sizeof(char *));
+
+        uint32_t instruction;
+        if (isDataProcessing(opcode)) {
+            instruction = assembleDataProcessing(opcode, operands);
+        } else if (isDataTransfer(opcode)) {
+            instruction = assembleDataTransfer(opcode, operands);
+        } else if (isBranch(opcode)) {
+            instruction = assembleBranch(opcode, operands); //, labelMap);
+        } else if (isVoid(opcode)) {
+            instruction = 0xD503201F;
+        } else if (isDirective(opcode)) {
+            instruction = assembleDirective(opcode, operands);
+        } else {
+            fprintf(stderr, "not recognised: %s\n", assemblyArray[line]);
+            return;
+        }
+        free(operands);
+
+        storeData(instruction, address, memoryArray, true);
+        address += 4;
+    }
+
+    freeLabelMap(labelMap);
+}
 
 int main(int argc, char **argv) {
-    long long word = -1;
-    printf("%lld\n", word);
+//    char **assemblyArray = calloc(ASSEMBLY_SIZE, sizeof(char *));
+//
+//    assemblyArray[0] = "b execute";
+//    assemblyArray[1] = "movz x2,#1";
+//    assemblyArray[2] = "execute:";
+//    assemblyArray[3] = "movz x1,#1";
+//    assemblyArray[4] = "and x0,x0,x0";
+//    //loadAssemblyFromFile(assemblyArray, filename);
+//
+//    uint8_t *memoryArray = allocateMemory();
+//    assemble(assemblyArray, memoryArray);
+//
+//    writeMachineToFile(memoryArray, "output.out");
+//
+//    free(assemblyArray);
+
+    char *name = "hellO";
+    char *other = "bye";
+
+    char **array = malloc(4 * sizeof(char *) );
+    array[0] = name;
+    array[1] = other;
+
+    assembleBranch("b", array);
+
     return EXIT_SUCCESS;
 }
+
+

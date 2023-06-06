@@ -696,7 +696,7 @@ enum BranchCondition {
 
 void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
     enum OffsetType branchType = instruction >> 30 & 0x3;
-    // 
+    //
     if (branchType == UNCONDITIONAL) {
         long long simm26 = (instruction & 0x3FFFFFF) << 2; // 000101 + 26 bits simm26
 
@@ -804,6 +804,7 @@ void processor(uint8_t *memPointer, char* filename, int argc) {
             registerStore.programCounter += 4;
         }
     }
+
     if (argc == 2) {
         outputTerminal(&registerStore, &stateRegister, memPointer);
     } else {
