@@ -14,9 +14,6 @@ bool isLabel(char *opcode);
 
 // FILE: utils.c
 
-char** loadAssemblyFromFile(char *filename) {
-
-}
 
 void writeMachineToFile(uint8_t *memPointer, char* filename) {
 
@@ -142,7 +139,7 @@ bool isDataProcessing(char *opcode) {
 
 }
 
-uint32_t assembleDataProcessing(char *opcode, char **operands) {
+uint32_t assembleDataProcessing(char *opcode, char **operands, int operand_length) {
     uint32_t instruction = 0;
 
     return instruction;
@@ -154,7 +151,7 @@ bool isDataTransfer(char *opcode) {
 
 }
 
-uint32_t assembleDataTransfer(char *opcode, char **operands) {
+uint32_t assembleDataTransfer(char *opcode, char **operands, int operand_length) {
     return 0;
 }
 
@@ -183,7 +180,7 @@ char *getCondition(char *opcode) {
     return token;
 }
 
-uint32_t assembleBranch(char *opcode, char **operands) {// , LabelAddressMap **labelMap) {
+uint32_t assembleBranch(char *opcode, char **operands, int operand_length) {// , LabelAddressMap **labelMap) {
     uint32_t instruction = 0;
     if (strstr(opcode, ".")) {
         char *condition = getCondition(opcode);
@@ -203,7 +200,7 @@ bool isDirective(char *opcode) {
 
 }
 
-uint32_t assembleDirective(char *opcode, char **operands) {
+uint32_t assembleDirective(char *opcode, char **operands, int operand_length) {
     return 0;
 }
 
@@ -280,19 +277,19 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
 
         char *currentInstruction = assemblyArray[line];
         char *opcode = extractOpcode(currentInstruction);
-        char **operands = malloc(3 * sizeof(char *));
+        char **operands = malloc(4 * sizeof(char *));
 
         uint32_t instruction;
         if (isDataProcessing(opcode)) {
-            instruction = assembleDataProcessing(opcode, operands);
+            instruction = assembleDataProcessing(opcode, operands, operand_length);
         } else if (isDataTransfer(opcode)) {
-            instruction = assembleDataTransfer(opcode, operands);
+            instruction = assembleDataTransfer(opcode, operands, operand_length);
         } else if (isBranch(opcode)) {
-            instruction = assembleBranch(opcode, operands); //, labelMap);
+            instruction = assembleBranch(opcode, operands, operand_length); //, labelMap);
         } else if (isVoid(opcode)) {
             instruction = 0xD503201F;
         } else if (isDirective(opcode)) {
-            instruction = assembleDirective(opcode, operands);
+            instruction = assembleDirective(opcode, operands, operand_length);
         } else {
             fprintf(stderr, "not recognised: %s\n", assemblyArray[line]);
             return;
@@ -335,7 +332,7 @@ int main(int argc, char **argv) {
     array[0] = name;
     array[1] = other;
 
-    assembleBranch("b", array);
+    //assembleBranch("b", array);
 
     return EXIT_SUCCESS;
 }
