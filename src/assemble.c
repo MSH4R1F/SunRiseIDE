@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <stdint.h>
 
 #define MEMORY_COUNT  2097152
 #define ASSEMBLY_SIZE 10
@@ -13,7 +14,7 @@ bool isLabel(char *opcode);
 
 // FILE: utils.c
 
-void loadAssemblyFromFile(char **assemblyArray[60], char *filename) {
+char** loadAssemblyFromFile(char *filename) {
 
 }
 
@@ -212,6 +213,58 @@ bool isVoid(char *opcode) {
 
 }
 
+char** loadAssemblyFromFile(char *filename) {
+    FILE *fp = fopen(filename, "r");
+
+    if( !fp ) {
+        fprintf(stderr, "Opened file: %s\n", filename);
+    }
+
+    // Count Lines
+    char cr;
+    size_t lines = 0;
+
+    while( cr != EOF ) {
+        if ( cr == '\n' ) {
+            lines++;
+        }
+        cr = getc(fp);
+    }
+    rewind(fp);
+
+    // Read data
+    {// 'goto' + data[lines] causes error, introduce block as a workaround
+        char **data = malloc(lines * sizeof(char *));
+        size_t n;
+
+        for (size_t i = 0; i < lines; i++) {
+            data[i] = NULL;
+            n = 0;
+
+            getline(&data[i], &n, fp);
+
+            if (ferror( fp )) {
+                fprintf(stderr, "Error reading from file\n");
+            }
+
+
+        }
+        fclose(fp);
+
+        char **newArray = malloc(lines * sizeof(char *));
+        int next = 0;
+        for (int i = 0; i < lines; i++) {
+            if (strlen(data[i]) != 1) {
+                printf("size = %lu\n", strlen(data[i]));
+                newArray[next] = data[i];
+                next++;
+            }
+        }
+        return newArray;
+    }
+
+}
+
 void assemble(char **assemblyArray, uint8_t *memoryArray) {
     LabelAddressMap **labelMap = allocateLabelMap();
     computeLabelMap(assemblyArray, labelMap);
@@ -261,7 +314,12 @@ int main(int argc, char **argv) {
 //    assemblyArray[2] = "execute:";
 //    assemblyArray[3] = "movz x1,#1";
 //    assemblyArray[4] = "and x0,x0,x0";
-//    //loadAssemblyFromFile(assemblyArray, filename);
+    if (argc == 1) {
+        char** assemblyArray = loadAssemblyFromFile("../../directpath");
+    } else {
+        char** assemblyArray = loadAssemblyFromFile(argv[1]);
+    }
+
 //
 //    uint8_t *memoryArray = allocateMemory();
 //    assemble(assemblyArray, memoryArray);
