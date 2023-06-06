@@ -378,8 +378,6 @@ int main(int argc, char **argv) {
     array[0] = name;
     array[1] = other;
 
-    //assembleBranch("b", array);
-
     return EXIT_SUCCESS;
 }
 
