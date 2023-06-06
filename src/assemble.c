@@ -168,11 +168,41 @@ char *extract_ith_opcode(char *instruction) {
 
 // FILE: dataProcessing.c
 
+char *getShift(char *opcode) {
+    char opcodeDefinite[8];
+    int i = 0;
+    while (opcode[i] != '\0') {
+        opcodeDefinite[i] = opcode[i];
+        i++;
+    }
+
+    char* rest = opcodeDefinite;
+    char* token = strtok_r(rest, " ", &rest);
+    // token = strtok_r(rest, ".", &rest);
+
+    return token;
+}
+
+char *getImm(char *opcode) {
+    char opcodeDefinite[8];
+    int i = 0;
+    while (opcode[i] != '\0') {
+        opcodeDefinite[i] = opcode[i];
+        i++;
+    }
+
+    char* rest = opcodeDefinite;
+    char* token = strtok_r(rest, " ", &rest);
+    token = strtok_r(rest, " ", &rest);
+
+    return token;
+}
+
 bool isDataProcessing(char *opcode) {
-    char *ops[] = {"add", "ads", "sub", "subs", "cmp", "cmn", "neg", "negs", "and", "ands",
+    char *ops[] = {"add", "adds", "sub", "subs", "cmp", "cmn", "neg", "negs", "and", "ands",
                    "bic", "bics", "eor", "orr", "eon", "orn", "tst", "movk", "movn",
                    "movz", "mov", "mvn", "madd", "msub", "mul", "mneg"};
-    for (int i = 0; i < ops; i++) {
+    for (int i = 0; i < 8; i++) {
         if (strcmp(opcode, ops[i]) == 0) {
             return true;
         }
@@ -180,11 +210,86 @@ bool isDataProcessing(char *opcode) {
     return false;
 }
 
-uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength) {
+uint32_t assembleDataProcessing2(char *opcode, char **operands) {
+    uint32_t instruction = 0;
+    if (strcmp(opcode, "tst") == 0) {
+        char *rn = operands[0];
+        char *op2 = operands[1];
+        char *newOperands[] = {"rzr", rn, op2};
+        return assembleDataProcessing3("and", newOperands);
+    }
+    if (*opcode == 'm') {
+        return -1;
+    } else {
+        return -1;
+    }
+    return instruction;
+}
+
+
+uint32_t assembleDataProcessing3(char *opcode, char **operands) {
     uint32_t instruction = 0;
 
     return instruction;
 }
+
+uint32_t assembleDataProcessing4MaddMsub() {
+    return -1;
+}
+
+uint32_t assembleDataProcessing4AndAnds(char *opcode, char **operands) {
+    uint32_t instruction = 0;
+    uint32_t sf = (operands[0][0] == 'w') ? 0 : 1;
+    uint32_t rd = encodeRegister(operands[0]);
+    uint32_t rn = encodeRegister(operands[1]);
+    uint32_t rm = encodeRegister(operands[2]);
+    uint32_t shift = encodeShift(getShift(operands[3]));
+    uint32_t operand = encodeImm(getImm(operands[3]));
+    uint32_t opc;
+    uint32_t n;
+    char *ops[] = {"and", "bic",
+                   "orr", "orn",
+                   "eor", "eon",
+                   "ands", "bics"};
+    for (int i = 0; i < 8; ++i) {
+        if (strcmp(ops[i], opcode) == 0) {
+            opc = i >> 1;
+            n = i & 0x1;
+            break;
+        }
+    }
+    uint32_t opr = (shift << 1) | n;
+    instruction |= (sf << 31);
+    instruction |= ((opc >> 1) << 29);
+    instruction |= (5 << 25);
+    instruction |= (opr << 21);
+    instruction |= (rm << 16);
+    instruction |= (operand << 10);
+    instruction |= (rn << 5);
+    instruction |= (rd);
+    return instruction;
+}
+
+uint32_t assembleDataProcessing4(char *opcode, char **operands) {
+    if (strcmp(opcode, "madd") == 0 || strcmp(opcode, "msub") == 0) {
+        return assembleDataProcessing4MaddMsub(opcode, operands);
+    } else {
+        return assembleDataProcessing4AndAnds(opcode, operands);
+    }
+}
+
+uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength) {
+    uint32_t instruction = 0;
+    if (operandLength == 2) {
+        return assembleDataProcessing2(opcode, operands);
+    } else if (operandLength == 3) {
+        return assembleDataProcessing3(opcode, operands);
+    } else {
+        return assembleDataProcessing4(opcode, operands);
+    }
+}
+
+
 
 // FILE: dataTransfer.c
 
@@ -291,7 +396,7 @@ char** loadAssemblyFromFile(char *filename) {
             data[i] = NULL;
             n = 0;
 
-            getline(&data[i], &n, fp);
+            // getline(&data[i], &n, fp);
 
             if (ferror( fp )) {
                 fprintf(stderr, "Error reading from file\n");
