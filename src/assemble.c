@@ -12,6 +12,39 @@
 
 bool isLabel(char *opcode);
 
+// FILE: key.c
+
+uint32_t encodeRegister(char *operand) {
+    if (strcmp(operand, "SP") == 0) {
+        return 0b11111;
+    } else {
+        operand++;
+        return strtol(operand, NULL, 0);
+    }
+}
+
+uint32_t encodeImm(char *operand) {
+    operand++;
+    return strtol(operand, NULL, 0);
+}
+
+uint32_t encodeSimm(char *operand) {
+    operand++;
+    return strtol(operand, NULL, 0);
+}
+
+uint32_t encodeShift(char *operand) {
+    if (strcmp(operand, "lsl") == 0) {
+        return 0;
+    } else if (strcmp(operand, "lsr") == 0) {
+        return 1;
+    } else if (strcmp(operand, "asr") == 0) {
+        return 2;
+    } else {
+        return 3;
+    }
+}
+
 // FILE: utils.c
 
 
@@ -147,11 +180,23 @@ uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength
 
 // FILE: dataTransfer.c
 
+long long encodeLiteralToOffset(char *operand, long long currentAddress, LabelAddressMap **labelMap) {
+    long long address;
+    if (operand[0] == '#') {
+        operand++;
+        address = atoll(operand);
+    } else {
+        address = getMapAddress(labelMap, operand);
+    }
+    long long offset = address - currentAddress;
+    return offset;
+}
+
 bool isDataTransfer(char *opcode) {
 
 }
 
-uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength) {
+uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, long long currentAddress) {
     return 0;
 }
 
@@ -180,7 +225,7 @@ char *getCondition(char *opcode) {
     return token;
 }
 
-uint32_t assembleBranch(char *opcode, char **operands, int operandLength) {// , LabelAddressMap **labelMap) {
+uint32_t assembleBranch(char *opcode, char **operands, int operandLength, long long currentAddress, LabelAddressMap **labelMap) {
     uint32_t instruction = 0;
     if (strstr(opcode, ".")) {
         char *condition = getCondition(opcode);
@@ -284,7 +329,7 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
         if (isDataProcessing(opcode)) {
             instruction = assembleDataProcessing(opcode, operands, operandLength);
         } else if (isDataTransfer(opcode)) {
-            instruction = assembleDataTransfer(opcode, operands, operandLength);
+            instruction = assembleDataTransfer(opcode, operands, operandLength, address);
         } else if (isBranch(opcode)) {
             instruction = assembleBranch(opcode, operands, operandLength); //, labelMap);
         } else if (isVoid(opcode)) {
@@ -305,17 +350,17 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
 }
 
 int main(int argc, char **argv) {
-//    char **assemblyArray = calloc(ASSEMBLY_SIZE, sizeof(char *));
-//
+    char **assemblyArray;
+
 //    assemblyArray[0] = "b execute";
 //    assemblyArray[1] = "movz x2,#1";
 //    assemblyArray[2] = "execute:";
 //    assemblyArray[3] = "movz x1,#1";
 //    assemblyArray[4] = "and x0,x0,x0";
     if (argc == 1) {
-        char** assemblyArray = loadAssemblyFromFile("../../directpath");
+        assemblyArray = loadAssemblyFromFile("../../directpath");
     } else {
-        char** assemblyArray = loadAssemblyFromFile(argv[1]);
+        assemblyArray = loadAssemblyFromFile(argv[1]);
     }
 
 //
