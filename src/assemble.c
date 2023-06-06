@@ -200,20 +200,25 @@ long long encodeLiteralToOffset(char *operand, long long currentAddress, LabelAd
     return offset;
 }
 
+static char *removeLastLetter(char* string) {
+    char *strPointer = malloc(strlen(string) * sizeof(char));
+    for (int i = 0; i < strlen(string) - 1; i++) {
+        strPointer[i] = string[i];
+    }
+    strPointer[strlen(string)] = '\0';
+    return strPointer;
+}
+
 bool isDataTransfer(char *opcode) {
     return strcmp(opcode, "ldr") == 0 || strcmp(opcode, "str") == 0;
 }
 
-uint32_t assembleLoadLiteral(char *opcode, char **operands, long long currentAddress, uint32_t sf, uint32_t destReg) {
-    uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
-    instruction |= (sf << 30);                              //sf bit
-    instruction |= (0b011000 << 23);                        //bits 24 to 29 are constant when not unsigned offset
-    instruction |= encodeLiteralToOffset(operands[1], currentAddress, );                 //type of data transfer
-    instruction |= (0 << 21);                               //21st bit if 0 for pre/post-index
-    instruction |= (encodeSimm(operands[2]) << 12); //simm9
-    instruction |= (0b01 << 10);                            //I and neighbouring bit
-    instruction |= (srcReg << 5);                           //source register
-    instruction |= destReg;                                 //destination register
+uint32_t assembleLoadLiteral(char *opcode, char **operands, long long currentAddress, uint32_t sf, uint32_t destReg, LabelAddressMap **labelMap) {
+    uint32_t instruction = 0x1 << 31;                                                         //left-most bit is constant
+    instruction |= (sf << 30);                                                                //sf bit
+    instruction |= (0b011000 << 23);                                                          //bits 24 to 29 are constant when not unsigned offset
+    instruction |= (encodeLiteralToOffset(operands[1], currentAddress, labelMap) / 4) << 5; //type of data transfer
+    instruction |= destReg;                                                                   //destination register
     return instruction;
 }
 
@@ -226,6 +231,7 @@ uint32_t assemblePostIndex(char **operands, uint32_t destReg, uint32_t sf, uint3
     instruction |= (encodeSimm(operands[2]) << 12); //simm9
     instruction |= (0b01 << 10);                            //I and neighbouring bit
     instruction |= (srcReg << 5);                           //source register
+    printf("srcReg: %x\n", srcReg);
     instruction |= destReg;                                 //destination register
     return instruction;
 }
@@ -240,6 +246,7 @@ uint32_t assemblePreIndex(char *simmOffset, uint32_t destReg, uint32_t sf, uint3
     instruction |= (0b11 << 10);                            //I and neighbouring bit
     instruction |= (srcReg << 5);                           //source register
     instruction |= destReg;                                 //destination register
+    free(simmOffset);
     return instruction;
 }
 
@@ -248,47 +255,52 @@ uint32_t assembleUnsignedOffset(char *immOffset, uint32_t destReg, uint32_t sf, 
     instruction |= (sf << 30);                              //sf bit
     instruction |= (0b1110010 << 23);                       //bits 23 to 29 are constant
     instruction |= (instructionType << 22);                 //type of data transfer
-    instruction |= (encodeImm(immOffset) << 10);    //imm12
+    printf("num: %d\n", encodeImm(immOffset));
+    instruction |= encodeImm(immOffset) << 10;    //imm12
     instruction |= (srcReg << 5);                           //source register
     instruction |= destReg;                                 //destination register
+    free(immOffset);
     return instruction;
 }
 
-uint32_t assembleRegisterOffset(char **operands, uint32_t destReg, uint32_t offsetReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
+uint32_t assembleRegisterOffset(uint32_t destReg, uint32_t offsetReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
     uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
     instruction |= (sf << 30);                              //sf bit
     instruction |= (0b1110000 << 23);                       //bits 23 to 29 are constant when not unsigned offset
     instruction |= (instructionType << 22);                 //type of data transfer
     instruction |= (1 << 21);                               //21st bit if 0 for pre/post-index
-    instruction |= offsetReg;                               //destination register
+    instruction |= offsetReg << 16;                               //destination register
     instruction |= (0b011010 << 10);                        //I and neighbouring bit
     instruction |= (srcReg << 5);                           //source register
     instruction |= destReg;                                 //destination register
     return instruction;
 }
 
-uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, long long currentAddress) {
+uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, long long currentAddress, LabelAddressMap **labelMap) {
     uint32_t destReg = encodeRegister(operands[0]);
     uint32_t sf = operands[0][0] == 'W' ? 0 : 1;
     if (operandLength == 2) {
-        return assembleLoadLiteral(opcode, operands, currentAddress, sf, destReg);
+        return assembleLoadLiteral(opcode, operands, currentAddress, sf, destReg, labelMap);
     } else {
         uint32_t instructionType = strcmp(opcode, "ldr") == 0 ? 1 : 0;
-        char* srcRegBeforeFormatting = operands[1]++;
-        uint32_t srcReg = encodeRegister(srcRegBeforeFormatting);
+        operands[1]++;
+        uint32_t srcReg = encodeRegister(operands[1]);
         if (operands[1][strlen(operands[1]) - 1] == ']') {
-            assemblePostIndex(operands, destReg, sf, srcReg, instructionType);
+            char *srcRegister = removeLastLetter(operands[1]);
+            uint32_t srcRegisterInt = encodeRegister(srcRegister);
+            free(srcRegister);
+            assemblePostIndex(operands, destReg, sf, srcRegisterInt, instructionType);
         } else if (operands[2][strlen(operands[2]) - 1] == '!') {
-            char *simmOffset = operands[2];
-            simmOffset[strlen(simmOffset) - 2] = '\0';
+            char *firstLetterRemoved = removeLastLetter(operands[2]);
+            char *simmOffset = removeLastLetter(firstLetterRemoved);
             assemblePreIndex(simmOffset, destReg, sf, srcReg, instructionType);
-        } else if (operands[2][strlen(operands[2]) - 1] == ']') {
-            char *immOffset = operands[2];
-            immOffset[strlen(immOffset) - 1] = '\0';
+        } else if (operands[2][0] == '#') {
+            char *immOffset = removeLastLetter(operands[2]);
             assembleUnsignedOffset(immOffset, destReg, sf, srcReg, instructionType);
         } else {
-            uint32_t offsetReg = encodeRegister(operands[2]);
-            assembleRegisterOffset(operands, destReg, offsetReg, sf, srcReg, instructionType);
+            uint32_t offsetReg = encodeRegister(removeLastLetter(operands[2]));
+            printf("%d\n", offsetReg);
+            assembleRegisterOffset(destReg, offsetReg, sf, srcReg, instructionType);
         }
     }
 }
@@ -422,7 +434,7 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
         if (isDataProcessing(opcode)) {
             instruction = assembleDataProcessing(opcode, operands, operandLength);
         } else if (isDataTransfer(opcode)) {
-            instruction = assembleDataTransfer(opcode, operands, operandLength, address);
+            instruction = assembleDataTransfer(opcode, operands, operandLength, address, labelMap);
         } else if (isBranch(opcode)) {
             instruction = assembleBranch(opcode, operands, operandLength, address, labelMap);
         } else if (isVoid(opcode)) {
@@ -443,18 +455,18 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
 }
 
 int main(int argc, char **argv) {
-    char **assemblyArray;
 
 //    assemblyArray[0] = "b execute";
 //    assemblyArray[1] = "movz x2,#1";
 //    assemblyArray[2] = "execute:";
 //    assemblyArray[3] = "movz x1,#1";
 //    assemblyArray[4] = "and x0,x0,x0";
-    if (argc == 1) {
-        assemblyArray = loadAssemblyFromFile("../../directpath");
-    } else {
-        assemblyArray = loadAssemblyFromFile(argv[1]);
-    }
+
+//    if (argc == 1) {
+//        assemblyArray = loadAssemblyFromFile("../../directpath");
+//    } else {
+//        assemblyArray = loadAssemblyFromFile(argv[1]);
+//    }
 
 //
 //    uint8_t *memoryArray = allocateMemory();
@@ -463,15 +475,7 @@ int main(int argc, char **argv) {
 //    writeMachineToFile(memoryArray, "output.out");
 //
 //    free(assemblyArray);
-
-    char *name = "hellO";
-    char *other = "bye";
-
-    char **array = malloc(4 * sizeof(char *) );
-    array[0] = name;
-    array[1] = other;
-
-    return EXIT_SUCCESS;
+    return 1;
 }
 
 
