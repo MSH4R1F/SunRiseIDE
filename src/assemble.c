@@ -169,7 +169,15 @@ char *extract_ith_opcode(char *instruction) {
 // FILE: dataProcessing.c
 
 bool isDataProcessing(char *opcode) {
-
+    char *ops[] = {"add", "ads", "sub", "subs", "cmp", "cmn", "neg", "negs", "and", "ands",
+                   "bic", "bics", "eor", "orr", "eon", "orn", "tst", "movk", "movn",
+                   "movz", "mov", "mvn", "madd", "msub", "mul", "mneg"};
+    for (int i = 0; i < ops; i++) {
+        if (strcmp(opcode, ops[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength) {
@@ -193,7 +201,7 @@ long long encodeLiteralToOffset(char *operand, long long currentAddress, LabelAd
 }
 
 bool isDataTransfer(char *opcode) {
-
+    return strcmp(opcode, "ldr") == 0 || strcmp(opcode, "str") == 0;
 }
 
 uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, long long currentAddress) {
@@ -203,7 +211,7 @@ uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, 
 // FILE: branch.c
 
 bool isBranch(char *opcode) {
-
+    return (strcmp(opcode, "b") == 0 || strcmp (opcode, "br") == 0 || strcmp(opcode, "b.cond") == 0);
 }
 
 bool isLabel(char *opcode) {
@@ -242,7 +250,7 @@ uint32_t assembleBranch(char *opcode, char **operands, int operandLength, long l
 // directive.c
 
 bool isDirective(char *opcode) {
-
+    return strcmp(opcode, ".int") == 0;
 }
 
 uint32_t assembleDirective(char *opcode, char **operands, int operandLength) {
@@ -252,7 +260,7 @@ uint32_t assembleDirective(char *opcode, char **operands, int operandLength) {
 // assemble.c
 
 bool isVoid(char *opcode) {
-
+    return strcmp(opcode, "nop") == 0;
 }
 
 char** loadAssemblyFromFile(char *filename) {
@@ -331,13 +339,13 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
         } else if (isDataTransfer(opcode)) {
             instruction = assembleDataTransfer(opcode, operands, operandLength, address);
         } else if (isBranch(opcode)) {
-            instruction = assembleBranch(opcode, operands, operandLength); //, labelMap);
+            instruction = assembleBranch(opcode, operands, operandLength, address, labelMap);
         } else if (isVoid(opcode)) {
             instruction = 0xD503201F;
         } else if (isDirective(opcode)) {
             instruction = assembleDirective(opcode, operands, operandLength);
         } else {
-            fprintf(stderr, "not recognised: %s\n", assemblyArray[line]);
+            printf("NOT RECOGNISED: %s\n", assemblyArray[line]);
             return;
         }
         free(operands);
