@@ -352,6 +352,7 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
 
         storeData(instruction, address, memoryArray, true);
         address += 4;
+
     }
 
     freeLabelMap(labelMap);
