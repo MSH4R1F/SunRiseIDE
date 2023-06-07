@@ -19,18 +19,27 @@ uint32_t encodeRegister(char *operand) {
         return 0b11111;
     } else {
         operand++;
-        return strtol(operand, NULL, 0);
+        return strtol(operand, NULL, 10);
     }
 }
 
 uint32_t encodeImm(char *operand) {
-    operand++;
-    return strtol(operand, NULL, 0);
+    if (operand[0] == '#') {
+        operand++;
+        return strtol(operand, NULL, 10);
+    } else {
+        return strtol(operand, NULL, 16);
+    }
+
 }
 
 uint32_t encodeSimm(char *operand) {
-    operand++;
-    return strtol(operand, NULL, 0);
+    if (operand[0] == '#') {
+        operand++;
+        return strtol(operand, NULL, 10);
+    } else {
+        return strtol(operand, NULL, 16);
+    }
 }
 
 uint32_t encodeShift(char *operand) {
@@ -47,6 +56,67 @@ uint32_t encodeShift(char *operand) {
 
 // FILE: utils.c
 
+char *createString(char *str) {
+    char *heapString = malloc(strlen(str) + 1);
+    if (str == NULL) {
+        return NULL;
+    }
+
+    strcpy(heapString, str);
+    return heapString;
+}
+
+char** loadAssemblyFromFile(char *filename) {
+    FILE *fp = fopen(filename, "r");
+
+    if( !fp ) {
+        fprintf(stderr, "Opened file: %s\n", filename);
+    }
+
+    // Count Lines
+    char cr;
+    size_t lines = 0;
+
+    while( cr != EOF ) {
+        if ( cr == '\n' ) {
+            lines++;
+        }
+        cr = getc(fp);
+    }
+    rewind(fp);
+
+    // Read data
+    {// 'goto' + data[lines] causes error, introduce block as a workaround
+        char **data = malloc(lines * sizeof(char *));
+        size_t n;
+
+        for (size_t i = 0; i < lines; i++) {
+            data[i] = NULL;
+            n = 0;
+
+            getline(&data[i], &n, fp);
+
+            if (ferror( fp )) {
+                fprintf(stderr, "Error reading from file\n");
+            }
+
+
+        }
+        fclose(fp);
+
+        char **newArray = malloc(lines * sizeof(char *));
+        int next = 0;
+        for (int i = 0; i < lines; i++) {
+            if (strlen(data[i]) != 1) {
+                printf("size = %lu\n", strlen(data[i]));
+                newArray[next] = data[i];
+                next++;
+            }
+        }
+        return newArray;
+    }
+
+}
 
 void writeMachineToFile(uint8_t *memPointer, char* filename) {
 
@@ -315,6 +385,56 @@ bool isLabel(char *opcode) {
     return strstr(opcode, ":");
 }
 
+uint32_t assembleBranchConditional(char *condition, char *literal, long long currentAddress, LabelAddressMap **labelMap) {
+    uint32_t instruction = 0;
+
+    if (strstr(condition, "eq")) {
+        instruction = 0;
+    } else if (strstr(condition, "ne")) {
+        printf("NE\n");
+        instruction = 1;
+    } else if (strstr(condition, "ge")) {
+        instruction = 10;
+    } else if (strstr(condition, "lt")) {
+        instruction = 11;
+    } else if (strstr(condition, "gt")) {
+        instruction = 12;
+    } else if (strstr(condition, "le")) {
+        instruction = 13;
+    } else {
+        instruction = 14;
+    }
+
+    long long simm19 = encodeLiteralToOffset(literal, currentAddress, labelMap) & 0x7FFFF;
+
+    instruction |= (simm19 << 5);
+    instruction |= (0x15 << 26);
+
+    return instruction;
+}
+
+uint32_t assembleBranchUnconditional(char *literal, long long currentAddress, LabelAddressMap **labelMap) {
+    uint32_t instruction = 0;
+
+    long long offset = encodeLiteralToOffset(literal, currentAddress, labelMap);
+    long long simm26 = (offset / 4) & 0x3FFFFFF;
+
+    instruction |= simm26;
+    instruction |= (0x5 << 26);
+
+    return instruction;
+}
+
+uint32_t assembleBranchRegister(char *registerName) {
+    uint32_t instruction = 0;
+
+    instruction |= (encodeRegister(registerName) << 5);
+    instruction |= (0x1F << 16);
+    instruction |= (0x6B << 25);
+
+    return instruction;
+}
+
 char *getCondition(char *opcode) {
     char opcodeDefinite[8];
     int i = 0;
@@ -327,21 +447,19 @@ char *getCondition(char *opcode) {
     char* token = strtok_r(rest, ".", &rest);
     token = strtok_r(rest, ".", &rest);
 
-    return token;
+    return createString(token);
 }
 
-uint32_t assembleBranch(char *opcode, char **operands, int operandLength, long long currentAddress, LabelAddressMap **labelMap) {
-    uint32_t instruction = 0;
+uint32_t assembleBranch(char *opcode, char **operands, long long currentAddress, LabelAddressMap **labelMap) {
     if (strstr(opcode, ".")) {
-        char *condition = getCondition(opcode);
+        return assembleBranchConditional(getCondition(opcode), operands[0], currentAddress, labelMap);
     } else {
         if (strcmp(opcode, "br") == 0) {
-            printf("was undonditional register branch");
+            return assembleBranchRegister(operands[0]);
         } else {
-            printf("was unconditional immediate branch");
+            return assembleBranchUnconditional(operands[0], currentAddress, labelMap);
         }
     }
-    return instruction;
 }
 
 // directive.c
@@ -351,65 +469,13 @@ bool isDirective(char *opcode) {
 }
 
 uint32_t assembleDirective(char *opcode, char **operands, int operandLength) {
-    return 0;
+    return encodeSimm(operands[0]);
 }
 
 // assemble.c
 
 bool isVoid(char *opcode) {
     return strcmp(opcode, "nop") == 0;
-}
-
-char** loadAssemblyFromFile(char *filename) {
-    FILE *fp = fopen(filename, "r");
-
-    if( !fp ) {
-        fprintf(stderr, "Opened file: %s\n", filename);
-    }
-
-    // Count Lines
-    char cr;
-    size_t lines = 0;
-
-    while( cr != EOF ) {
-        if ( cr == '\n' ) {
-            lines++;
-        }
-        cr = getc(fp);
-    }
-    rewind(fp);
-
-    // Read data
-    {// 'goto' + data[lines] causes error, introduce block as a workaround
-        char **data = malloc(lines * sizeof(char *));
-        size_t n;
-
-        for (size_t i = 0; i < lines; i++) {
-            data[i] = NULL;
-            n = 0;
-
-            getline(&data[i], &n, fp);
-
-            if (ferror( fp )) {
-                fprintf(stderr, "Error reading from file\n");
-            }
-
-
-        }
-        fclose(fp);
-
-        char **newArray = malloc(lines * sizeof(char *));
-        int next = 0;
-        for (int i = 0; i < lines; i++) {
-            if (strlen(data[i]) != 1) {
-                printf("size = %lu\n", strlen(data[i]));
-                newArray[next] = data[i];
-                next++;
-            }
-        }
-        return newArray;
-    }
-
 }
 
 void assemble(char **assemblyArray, uint8_t *memoryArray) {
@@ -436,12 +502,13 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
         } else if (isDataTransfer(opcode)) {
             instruction = assembleDataTransfer(opcode, operands, operandLength, address, labelMap);
         } else if (isBranch(opcode)) {
-            instruction = assembleBranch(opcode, operands, operandLength, address, labelMap);
+            instruction = assembleBranch(opcode, operands, address, labelMap);
         } else if (isVoid(opcode)) {
             instruction = 0xD503201F;
         } else if (isDirective(opcode)) {
             instruction = assembleDirective(opcode, operands, operandLength);
         } else {
+            printf("-----ERROR-----\n");
             printf("NOT RECOGNISED: %s\n", assemblyArray[line]);
             return;
         }
@@ -449,33 +516,42 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
 
         storeData(instruction, address, memoryArray, true);
         address += 4;
+
     }
 
     freeLabelMap(labelMap);
 }
 
 int main(int argc, char **argv) {
+    char **assemblyArray = calloc(ASSEMBLY_SIZE, sizeof(char *));
 
-//    assemblyArray[0] = "b execute";
-//    assemblyArray[1] = "movz x2,#1";
-//    assemblyArray[2] = "execute:";
-//    assemblyArray[3] = "movz x1,#1";
-//    assemblyArray[4] = "and x0,x0,x0";
+    assemblyArray[0] = "b execute"; //      0x00
+    assemblyArray[1] = "movz x2, #1"; //    0x04
+    assemblyArray[2] = "execute:";    //    0x08
+    assemblyArray[3] = "movz x1, #1"; //    0x08
+    assemblyArray[4] = "movz x3, #1"; //    0x0C
+    assemblyArray[5] = "cmp x1, x3"; //     0x10
+    assemblyArray[6] = "b.ge execute";   // 0x14
+    assemblyArray[7] = "and x0, x0, x0"; // 0x18
 
-//    if (argc == 1) {
-//        assemblyArray = loadAssemblyFromFile("../../directpath");
-//    } else {
-//        assemblyArray = loadAssemblyFromFile(argv[1]);
-//    }
+    LabelAddressMap **labelMap = allocateLabelMap();
+    computeLabelMap(assemblyArray, labelMap);
 
-//
-//    uint8_t *memoryArray = allocateMemory();
-//    assemble(assemblyArray, memoryArray);
-//
-//    writeMachineToFile(memoryArray, "output.out");
-//
-//    free(assemblyArray);
-    return 1;
+    // ----BEGIN TESTS----
+
+    char *opcode = "b.ge";
+    char *operands[] = { "execute" };
+
+    uint32_t result = assembleBranch(opcode, operands, 0x14, labelMap);
+    printf("%s - %08x\n", assemblyArray[6], result);
+
+    //encodeLiteralToOffset(operands[0], 0x)
+
+    // -----END TESTS-----
+
+    //freeLabelMap(labelMap);
+
+    return EXIT_SUCCESS;
 }
 
 
