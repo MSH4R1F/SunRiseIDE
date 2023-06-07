@@ -310,21 +310,6 @@ bool isDataProcessing(char *opcode) {
     return false;
 }
 
-uint32_t assembleDataProcessing2(char *opcode, char **operands) {
-    uint32_t instruction = 0;
-    if (strcmp(opcode, "tst") == 0) {
-        char *rn = operands[0];
-        char *op2 = operands[1];
-        char *newOperands[] = {"rzr", rn, op2};
-        return assembleDataProcessing3("and", newOperands);
-    }
-    if (*opcode == 'm') {
-        return -1;
-    } else {
-        return -1;
-    }
-    return instruction;
-}
 
 uint32_t assembleMaddMsub(char *opcode, char **operands) {
     uint32_t sf = operands[0][0] == 'X' ? 64 : 32;
