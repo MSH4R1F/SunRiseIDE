@@ -292,7 +292,7 @@ uint32_t assembleDataProcessing2(char *opcode, char **operands) {
     return instruction;
 }
 
-uint32_t assembleDataProcessing4MaddMsub(char *opcode, char **operands) {
+uint32_t assembleMaddMsub(char *opcode, char **operands) {
     uint32_t sf = operands[0][0] == 'X' ? 64 : 32;
     uint32_t instruction = sf << 31;
     instruction |= 0b0011011000 << 21;
@@ -307,7 +307,7 @@ uint32_t assembleDataProcessing4MaddMsub(char *opcode, char **operands) {
 uint32_t assembleMultiply(char *opcode, char **operands) {
     operands[3] = "xzr";
     opcode = strcmp(opcode, "mul") == 0 ? "madd" : "msub";
-    return assembleDataProcessing4MaddMsub(opcode, operands);
+    return assembleMaddMsub(opcode, operands);
 }
 
 uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
@@ -376,7 +376,7 @@ uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandlengt
 }
 uint32_t assembleBitLogic(char *opcode, char **operands) {
     uint32_t instruction = 0;
-    uint32_t sf = (operands[0][0] == 'w') ? 0 : 1;
+    uint32_t sf = operands[0][0] == 'x';
     uint32_t rd = encodeRegister(operands[0]);
     uint32_t rn = encodeRegister(operands[1]);
     uint32_t rm = encodeRegister(operands[2]);
@@ -409,7 +409,7 @@ uint32_t assembleBitLogic(char *opcode, char **operands) {
 
 uint32_t assembleDataProcessing4(char *opcode, char **operands) {
     if (strcmp(opcode, "madd") == 0 || strcmp(opcode, "msub") == 0) {
-        return assembleDataProcessing4MaddMsub(opcode, operands);
+        return assembleMaddMsub(opcode, operands);
     } else if (opcode[1] == 'd' || opcode[0] == 's') {
         return assembleArithmeticLogic(opcode, operands, 4);
     } else {
