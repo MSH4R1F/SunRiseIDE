@@ -19,18 +19,27 @@ uint32_t encodeRegister(char *operand) {
         return 0b11111;
     } else {
         operand++;
-        return strtol(operand, NULL, 0);
+        return strtol(operand, NULL, 10);
     }
 }
 
 uint32_t encodeImm(char *operand) {
-    operand++;
-    return strtol(operand, NULL, 0);
+    if (operand[0] == '#') {
+        operand++;
+        return strtol(operand, NULL, 10);
+    } else {
+        return strtol(operand, NULL, 16);
+    }
+
 }
 
 uint32_t encodeSimm(char *operand) {
-    operand++;
-    return strtol(operand, NULL, 0);
+    if (operand[0] == '#') {
+        operand++;
+        return strtol(operand, NULL, 10);
+    } else {
+        return strtol(operand, NULL, 16);
+    }
 }
 
 uint32_t encodeShift(char *operand) {
@@ -261,10 +270,6 @@ long long encodeLiteralToOffset(char *operand, long long currentAddress, LabelAd
     return offset;
 }
 
-bool isDataTransfer(char *opcode) {
-    return strcmp(opcode, "ldr") == 0 || strcmp(opcode, "str") == 0;
-}
-
 static char *removeLastLetter(char* string) {
     char *strPointer = malloc(strlen(string) * sizeof(char));
     for (int i = 0; i < strlen(string) - 1; i++) {
@@ -272,6 +277,10 @@ static char *removeLastLetter(char* string) {
     }
     strPointer[strlen(string)] = '\0';
     return strPointer;
+}
+
+bool isDataTransfer(char *opcode) {
+    return strcmp(opcode, "ldr") == 0 || strcmp(opcode, "str") == 0;
 }
 
 uint32_t assembleLoadLiteral(char *opcode, char **operands, long long currentAddress, uint32_t sf, uint32_t destReg, LabelAddressMap **labelMap) {
@@ -350,18 +359,18 @@ uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, 
             char *srcRegister = removeLastLetter(operands[1]);
             uint32_t srcRegisterInt = encodeRegister(srcRegister);
             free(srcRegister);
-            return assemblePostIndex(operands, destReg, sf, srcRegisterInt, instructionType);
+            assemblePostIndex(operands, destReg, sf, srcRegisterInt, instructionType);
         } else if (operands[2][strlen(operands[2]) - 1] == '!') {
             char *firstLetterRemoved = removeLastLetter(operands[2]);
             char *simmOffset = removeLastLetter(firstLetterRemoved);
-            return assemblePreIndex(simmOffset, destReg, sf, srcReg, instructionType);
+            assemblePreIndex(simmOffset, destReg, sf, srcReg, instructionType);
         } else if (operands[2][0] == '#') {
             char *immOffset = removeLastLetter(operands[2]);
-            return assembleUnsignedOffset(immOffset, destReg, sf, srcReg, instructionType);
+            assembleUnsignedOffset(immOffset, destReg, sf, srcReg, instructionType);
         } else {
             uint32_t offsetReg = encodeRegister(removeLastLetter(operands[2]));
             printf("%d\n", offsetReg);
-            return assembleRegisterOffset(destReg, offsetReg, sf, srcReg, instructionType);
+            assembleRegisterOffset(destReg, offsetReg, sf, srcReg, instructionType);
         }
     }
 }
@@ -460,7 +469,7 @@ bool isDirective(char *opcode) {
 }
 
 uint32_t assembleDirective(char *opcode, char **operands, int operandLength) {
-    return 0;
+    return encodeSimm(operands[0]);
 }
 
 // assemble.c
@@ -491,7 +500,7 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
         if (isDataProcessing(opcode)) {
             instruction = assembleDataProcessing(opcode, operands, operandLength);
         } else if (isDataTransfer(opcode)) {
-            instruction = assembleDataTransfer(opcode, operands, operandLength, address);
+            instruction = assembleDataTransfer(opcode, operands, operandLength, address, labelMap);
         } else if (isBranch(opcode)) {
             instruction = assembleBranch(opcode, operands, address, labelMap);
         } else if (isVoid(opcode)) {
