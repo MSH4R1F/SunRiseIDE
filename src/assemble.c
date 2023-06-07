@@ -15,7 +15,7 @@ bool isLabel(char *opcode);
 // FILE: key.c
 
 uint32_t encodeRegister(char *operand) {
-    if (strcmp(operand, "SP") == 0) {
+    if (strcmp(operand, "SP") == 0 || operand[1] == 'z') {
         return 0b11111;
     } else {
         operand++;
