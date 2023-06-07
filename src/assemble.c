@@ -7,7 +7,7 @@
 
 #define MEMORY_COUNT  2097152
 #define ASSEMBLY_SIZE 10
-
+uint32_t assembleDataProcessing3(char *opcode, char **operands);
 // FILE branch.h
 
 bool isLabel(char *opcode);
@@ -15,7 +15,7 @@ bool isLabel(char *opcode);
 // FILE: key.c
 
 uint32_t encodeRegister(char *operand) {
-    if (strcmp(operand, "SP") == 0) {
+    if (strcmp(operand, "SP") == 0 || operand[1] == 'z') {
         return 0b11111;
     } else {
         operand++;
@@ -24,13 +24,22 @@ uint32_t encodeRegister(char *operand) {
 }
 
 uint32_t encodeImm(char *operand) {
-    operand++;
-    return strtol(operand, NULL, 0);
+    if (operand[0] == '#') {
+        operand++;
+        return strtol(operand, NULL, 10);
+    } else {
+        return strtol(operand, NULL, 16);
+    }
+
 }
 
 uint32_t encodeSimm(char *operand) {
-    operand++;
-    return strtol(operand, NULL, 0);
+    if (operand[0] == '#') {
+        operand++;
+        return strtol(operand, NULL, 10);
+    } else {
+        return strtol(operand, NULL, 16);
+    }
 }
 
 uint32_t encodeShift(char *operand) {
@@ -226,18 +235,77 @@ uint32_t assembleDataProcessing2(char *opcode, char **operands) {
     return instruction;
 }
 
+uint32_t assembleDataProcessing4MaddMsub(char *opcode, char **operands) {
+    uint32_t sf = operands[0][0] == 'X' ? 64 : 32;
+    uint32_t instruction = sf << 31;
+    instruction |= 0b0011011000 << 21;
+    instruction |= encodeRegister(operands[2]) << 16;
+    instruction |= strcmp(opcode, "madd") == 0 ? 0 : 1;
+    instruction |= encodeRegister(operands[3]) << 10;
+    instruction |= encodeRegister(operands[1]) << 5;
+    instruction |= encodeRegister(operands[0]);
+    return instruction;
+}
 
-uint32_t assembleDataProcessing3(char *opcode, char **operands) {
+uint32_t assembleMultiply(char *opcode, char **operands) {
+    operands[3] = "xzr";
+    opcode = strcmp(opcode, "mul") == 0 ? "madd" : "msub";
+    return assembleDataProcessing4MaddMsub(opcode, operands);
+}
+
+uint32_t assembleMove(char *opcode, char **operands) {
+    uint32_t sf = operands[0][0] == 'X' ? 64 : 32;
+    uint32_t instruction = sf << 31;
+    uint32_t opc = 0;
+    if (strcmp(opcode, "movz") == 0) {
+        opc = 0b10;
+    } else if (strcmp(opcode, "movk") == 0) {
+        opc = 0b11;
+    }
+    instruction |= opc << 29;
+    instruction |= 0b100101 << 23;
+    instruction |= encodeRegister(operands[2]) << 16;
+    instruction |= strcmp(opcode, "madd") == 0 ? 0 : 1;
+    instruction |= encodeRegister(operands[3]) << 10;
+    instruction |= encodeRegister(operands[1]) << 5;
+    instruction |= encodeRegister(operands[0]);
+    return instruction;
+}
+
+uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandlength) {
+    char *ops[] = {"add", "adds", "sub", "subs"};
     uint32_t instruction = 0;
+    instruction |= (operands[0][0] == 'X') ? 64 : 32 << 31;
+    instruction |= encodeRegister(operands[0]);
+    uint32_t opc = 0;
+    for (int i = 0; i < 4; i++) {
+        if (strcmp(opcode, ops[i]) == 0) {
+            opc = i;
+            break;
+        }
+    }
+    instruction |= opc << 29;
+    instruction |= opc << 27;
+    if (operandlength == 4) {
+        uint32_t shift = encodeShift(getShift(operands[3]));
+        instrucct
+    }
+    uint32_t operand = encodeImm(operands[2]);
 
     return instruction;
 }
 
-uint32_t assembleDataProcessing4MaddMsub() {
-    return -1;
+uint32_t assembleDataProcessing3(char *opcode, char **operands) {
+    uint32_t instruction = 0;
+    if (*opcode == 'm') {
+        return assembleMultiply(opcode, operands);
+    }
+    else {
+        return assembleArithmeticLogic(opcode, operands, 3);
+    }
 }
 
-uint32_t assembleDataProcessing4AndAnds(char *opcode, char **operands) {
+uint32_t assembleBitLogic(char *opcode, char **operands) {
     uint32_t instruction = 0;
     uint32_t sf = (operands[0][0] == 'w') ? 0 : 1;
     uint32_t rd = encodeRegister(operands[0]);
@@ -273,8 +341,10 @@ uint32_t assembleDataProcessing4AndAnds(char *opcode, char **operands) {
 uint32_t assembleDataProcessing4(char *opcode, char **operands) {
     if (strcmp(opcode, "madd") == 0 || strcmp(opcode, "msub") == 0) {
         return assembleDataProcessing4MaddMsub(opcode, operands);
+    } else if (opcode[1] == 'd' || opcode[0] == 's') {
+        return assembleArithmeticLogic(opcode, operands, 4);
     } else {
-        return assembleDataProcessing4AndAnds(opcode, operands);
+        return assembleBitLogic(opcode, operands);
     }
 }
 
@@ -463,18 +533,21 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
 }
 
 int main(int argc, char **argv) {
-    char **assemblyArray;
-
+    // char **assemblyArray;
+    // assemblyArray[0] = "and x2,#1";
+    printf("start main\n");
+    char *hi[] = {"x2", "x1", "x3", "lsl #4"};
+    printf("%x\n", assembleDataProcessing("and", hi, 4));
 //    assemblyArray[0] = "b execute";
 //    assemblyArray[1] = "movz x2,#1";
 //    assemblyArray[2] = "execute:";
 //    assemblyArray[3] = "movz x1,#1";
 //    assemblyArray[4] = "and x0,x0,x0";
-    if (argc == 1) {
-        assemblyArray = loadAssemblyFromFile("../../directpath");
-    } else {
-        assemblyArray = loadAssemblyFromFile(argv[1]);
-    }
+//    if (argc == 1) {
+//        assemblyArray = loadAssemblyFromFile("../../directpath");
+//    } else {
+//        assemblyArray = loadAssemblyFromFile(argv[1]);
+//    }
 
 //
 //    uint8_t *memoryArray = allocateMemory();
@@ -483,13 +556,6 @@ int main(int argc, char **argv) {
 //    writeMachineToFile(memoryArray, "output.out");
 //
 //    free(assemblyArray);
-
-    char *name = "hellO";
-    char *other = "bye";
-
-    char **array = malloc(4 * sizeof(char *) );
-    array[0] = name;
-    array[1] = other;
 
     return EXIT_SUCCESS;
 }
