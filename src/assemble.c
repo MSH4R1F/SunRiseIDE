@@ -359,18 +359,18 @@ uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, 
             char *srcRegister = removeLastLetter(operands[1]);
             uint32_t srcRegisterInt = encodeRegister(srcRegister);
             free(srcRegister);
-            assemblePostIndex(operands, destReg, sf, srcRegisterInt, instructionType);
+            return assemblePostIndex(operands, destReg, sf, srcRegisterInt, instructionType);
         } else if (operands[2][strlen(operands[2]) - 1] == '!') {
             char *firstLetterRemoved = removeLastLetter(operands[2]);
             char *simmOffset = removeLastLetter(firstLetterRemoved);
-            assemblePreIndex(simmOffset, destReg, sf, srcReg, instructionType);
+            return assemblePreIndex(simmOffset, destReg, sf, srcReg, instructionType);
         } else if (operands[2][0] == '#') {
             char *immOffset = removeLastLetter(operands[2]);
-            assembleUnsignedOffset(immOffset, destReg, sf, srcReg, instructionType);
+            return assembleUnsignedOffset(immOffset, destReg, sf, srcReg, instructionType);
         } else {
             uint32_t offsetReg = encodeRegister(removeLastLetter(operands[2]));
             printf("%d\n", offsetReg);
-            assembleRegisterOffset(destReg, offsetReg, sf, srcReg, instructionType);
+            return assembleRegisterOffset(destReg, offsetReg, sf, srcReg, instructionType);
         }
     }
 }
