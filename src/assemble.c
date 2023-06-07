@@ -19,18 +19,27 @@ uint32_t encodeRegister(char *operand) {
         return 0b11111;
     } else {
         operand++;
-        return strtol(operand, NULL, 0);
+        return strtol(operand, NULL, 10);
     }
 }
 
 uint32_t encodeImm(char *operand) {
-    operand++;
-    return strtol(operand, NULL, 0);
+    if (operand[0] == '#') {
+        operand++;
+        return strtol(operand, NULL, 10);
+    } else {
+        return strtol(operand, NULL, 16);
+    }
+
 }
 
 uint32_t encodeSimm(char *operand) {
-    operand++;
-    return strtol(operand, NULL, 0);
+    if (operand[0] == '#') {
+        operand++;
+        return strtol(operand, NULL, 10);
+    } else {
+        return strtol(operand, NULL, 16);
+    }
 }
 
 uint32_t encodeShift(char *operand) {
@@ -363,7 +372,7 @@ bool isDirective(char *opcode) {
 }
 
 uint32_t assembleDirective(char *opcode, char **operands, int operandLength) {
-    return 0;
+    return encodeSimm(operands[0]);
 }
 
 // assemble.c
