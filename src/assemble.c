@@ -359,8 +359,6 @@ uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength
     }
 }
 
-
-
 // FILE: dataTransfer.c
 
 long long encodeLiteralToOffset(char *operand, long long currentAddress, LabelAddressMap **labelMap) {
