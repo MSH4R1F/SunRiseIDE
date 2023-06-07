@@ -215,6 +215,40 @@ char *extractOpcode(char *instruction) {
     return opcode;
 }
 
+char *getOperands(char *opcode) {
+    char opcodeDefinite[strlen(opcode) + 1];
+    int i = 0;
+    while (opcode[i] != '\0') {
+        opcodeDefinite[i] = opcode[i];
+        i++;
+    }
+
+    char* rest = opcodeDefinite;
+    char* token = strtok_r(opcodeDefinite, " ", &rest);
+    // token = strtok_r(rest, ".", &rest);
+
+    return createString(rest);
+}
+
+char **extractOperands(char *instruction) {
+    char *line_copy = strdup(instruction);
+    char *operands = strtok(line_copy, " ");
+    operands = getOperands(instruction);
+    printf("operands: %s\n", operands);
+    char **splitOperands = calloc(4, sizeof(char *));
+    char *token = strtok(operands, ",");
+    int count = 0;
+    while(token != NULL) {
+        if (token[0] == ' ') {
+            token++;
+        }
+        splitOperands[count] = token;
+        count++;
+        token = strtok(NULL, ",");
+    }
+    return splitOperands;
+}
+
 // MARK: FIX NAME TO CAMEL CASE, BIT VAGUE AS WELL
 char *extract_ith_opcode(char *instruction) {
     char *line_copy = strdup(instruction);
@@ -407,6 +441,35 @@ uint32_t assembleBitLogic(char *opcode, char **operands) {
     return instruction;
 }
 
+uint32_t assembleTst(char *opcode, char **operands, int operandLength) {
+    char *zeroRegister = calloc(4, sizeof(char));
+    zeroRegister[0] = operands[0][0];
+    strcpy(zeroRegister + 1, "zr");
+
+    char *shifter = "lsl #0";
+    if (operands[2] != NULL) {
+        shifter = operands[2];
+    }
+
+    char **newOperands = calloc(4, sizeof(char *));
+    newOperands[0] = zeroRegister;
+    newOperands[1] = operands[0];
+    newOperands[2] = operands[1];
+    newOperands[3] = createString(shifter);
+
+    return assembleBitLogic("ands", newOperands);
+}
+
+uint32_t assembleMov(char *opcode, char **operands, int operandLength) {
+    char *shiftString = "lsl #0";
+    if (operandLength == 3) {
+        shiftString = operands[2];
+    }
+    char *newOps[] = {operands[0], "xzr", operands[1],  shiftString};
+    opcode = "orr";
+    return assembleBitLogic(opcode, newOps);
+}
+
 uint32_t assembleDataProcessing4(char *opcode, char **operands) {
     if (strcmp(opcode, "madd") == 0 || strcmp(opcode, "msub") == 0) {
         return assembleMaddMsub(opcode, operands);
@@ -565,7 +628,7 @@ void outputFile(uint8_t *memoryArray, char* filename) {
     fclose(fp); //Don't forget to close the file when finished
 }
 
-void assemble(char **assemblyArray, uint8_t *memoryArray) {
+void assemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
     LabelAddressMap **labelMap = allocateLabelMap();
     computeLabelMap(assemblyArray, labelMap);
 
@@ -580,9 +643,15 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
 
         char *currentInstruction = assemblyArray[line];
         char *opcode = extractOpcode(currentInstruction);
-        char **operands = malloc(4 * sizeof(char *));
-        int operandLength = 2; //Change to num of operands
-
+        char **operands = extractOperands(currentInstruction);
+        int operandLength= 4;
+        for (int i = 0; i < 4; i++) {
+            if (operands[i] == 0) {
+                operandLength = i;
+                break;
+            }
+        }
+        printf("operandLength: %d", operandLength);
         uint32_t instruction;
         if (isDataProcessing(opcode)) {
             instruction = assembleDataProcessing(opcode, operands, operandLength);
@@ -603,7 +672,7 @@ void assemble(char **assemblyArray, uint8_t *memoryArray) {
         storeData(instruction, address, memoryArray, false);
         address += 4;
     }
-
+    outputFile(memoryArray, filename);
     freeLabelMap(labelMap);
 }
 
