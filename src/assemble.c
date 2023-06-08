@@ -127,6 +127,7 @@ char** loadAssemblyFromFile(char *filename) {
                 newArray[next] = data[i];
                 next++;
             }
+
         }
         return newArray;
     }
@@ -331,7 +332,7 @@ uint32_t assembleMaddMsub(char *opcode, char **operands) {
     uint32_t instruction = sf << 31;
     instruction |= 0b0011011000 << 21;
     instruction |= encodeRegister(operands[2]) << 16;
-    instruction |= strcmp(opcode, "madd") == 0 ? 0 : 1;
+    instruction |= (strcmp(opcode, "madd") == 0 ? 0 : 1) << 15;
     instruction |= encodeRegister(operands[3]) << 10;
     instruction |= encodeRegister(operands[1]) << 5;
     instruction |= encodeRegister(operands[0]);
@@ -339,13 +340,16 @@ uint32_t assembleMaddMsub(char *opcode, char **operands) {
 }
 
 uint32_t assembleMultiply(char *opcode, char **operands) {
-    operands[3] = "xzr";
+    char *zeroRegister = calloc(4, sizeof(char));
+    zeroRegister[0] = operands[0][0];
+    strcpy(zeroRegister + 1, "zr");
+    operands[3] = zeroRegister;
     opcode = strcmp(opcode, "mul") == 0 ? "madd" : "msub";
     return assembleMaddMsub(opcode, operands);
 }
 
 uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
-    uint32_t sf = operands[0][0] == 'X' ? 64 : 32;
+    uint32_t sf = operands[0][0] == 'x' ? 1 : 0;
     uint32_t instruction = sf << 31;
     uint32_t opc = 0;
     if (strcmp(opcode, "movz") == 0) {
@@ -359,6 +363,7 @@ uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
     if (operandLength == 3) {
         hw = encodeImm(getImm(operands[2])) / 16;
     }
+    instruction |= hw << 21;
     instruction |= encodeImm(operands[1]) << 5;
     instruction |= encodeRegister(operands[0]);
     return instruction;
@@ -592,10 +597,11 @@ bool isDataTransfer(char *opcode) {
 }
 
 uint32_t assembleLoadLiteral(char *opcode, char **operands, long long currentAddress, uint32_t sf, uint32_t destReg, LabelAddressMap **labelMap) {
-    uint32_t instruction = 0x1 << 31;                                                         //left-most bit is constant
+    uint32_t instruction = 0x0;                                                         //left-most bit is constant
     instruction |= (sf << 30);                                                                //sf bit
-    instruction |= (0b011000 << 23);                                                          //bits 24 to 29 are constant when not unsigned offset
-    instruction |= (encodeLiteralToOffset(operands[1], currentAddress, labelMap) / 4) << 5; //type of data transfer
+    instruction |= (0b011000 << 24);//bits 24 to 29 are constant when not unsigned offset
+    uint32_t simm19 = (encodeLiteralToOffset(operands[1], currentAddress, labelMap) / 4) & 0x7FFFF;
+    instruction |= simm19 << 5; //type of data transfer
     instruction |= destReg;                                                                   //destination register
     return instruction;
 }
@@ -606,7 +612,7 @@ uint32_t assemblePostIndex(char **operands, uint32_t destReg, uint32_t sf, uint3
     instruction |= (0b1110000 << 23);                       //bits 23 to 29 are constant when not unsigned offset
     instruction |= (instructionType << 22);                 //type of data transfer
     instruction |= (0 << 21);                               //21st bit if 0 for pre/post-index
-    instruction |= (encodeSimm(operands[2]) << 12); //simm9
+    instruction |= (encodeSimm(operands[2]) & 0x1FF) << 12;  //simm9
     instruction |= (0b01 << 10);                            //I and neighbouring bit
     instruction |= (srcReg << 5);                           //source register
     printf("srcReg: %x\n", srcReg);
