@@ -48,6 +48,28 @@ uint32_t encodeShift(char *operand) {
 }
 
 // FILE: utils.c
+long long loadData(long long address, uint8_t *memPointer, bool isDoubleWord) {
+    int bytesCount = 4;
+    if (isDoubleWord) {
+        bytesCount = 8;
+    }
+
+    long long data = 0;
+    for (int i = 0; i < bytesCount; i++) {
+        long long currentByte = memPointer[address + i];
+        uint32_t significance = 8 * i;
+        data = data | (currentByte << significance);
+    }
+
+    if (!isDoubleWord) {
+        if (data & 0x80000000) {
+            long long extend = 0xFFFFFFFF;
+            data = data | (extend << 32);
+        }
+    }
+
+    return data;
+}
 
 char *createString(char *str) {
     char *heapString = malloc(strlen(str) + 1);
@@ -81,7 +103,7 @@ char** loadAssemblyFromFile(char *filename) {
 
     // Read data
     {// 'goto' + data[lines] causes error, introduce block as a workaround
-        char **data = malloc(lines * sizeof(char *));
+        char **data = calloc(lines, sizeof(char *));
         size_t n;
 
         for (size_t i = 0; i < lines; i++) {
@@ -102,7 +124,6 @@ char** loadAssemblyFromFile(char *filename) {
         int next = 0;
         for (int i = 0; i < lines; i++) {
             if (strlen(data[i]) != 1) {
-                printf("size = %lu\n", strlen(data[i]));
                 newArray[next] = data[i];
                 next++;
             }
@@ -217,16 +238,13 @@ char *extractOpcode(char *instruction) {
 
 char *getOperands(char *opcode) {
     char opcodeDefinite[strlen(opcode) + 1];
-    int i = 0;
-    while (opcode[i] != '\0') {
+    for (int i = 0; i < strlen(opcode); i++) {
         opcodeDefinite[i] = opcode[i];
-        i++;
     }
+    opcodeDefinite[strlen(opcode)] = '\0';
 
     char* rest = opcodeDefinite;
     char* token = strtok_r(opcodeDefinite, " ", &rest);
-    // token = strtok_r(rest, ".", &rest);
-
     return createString(rest);
 }
 
@@ -234,7 +252,6 @@ char **extractOperands(char *instruction) {
     char *line_copy = strdup(instruction);
     char *operands = strtok(line_copy, " ");
     operands = getOperands(instruction);
-    printf("operands: %s\n", operands);
     char **splitOperands = calloc(4, sizeof(char *));
     char *token = strtok(operands, ",");
     int count = 0;
@@ -266,7 +283,6 @@ char *extract_ith_opcode(char *instruction) {
 
 // FILE: dataProcessing.c
 
-uint32_t assembleDataProcessing3(char *opcode, char **operands);
 
 char *getShift(char *opcode) {
     char opcodeDefinite[8];
@@ -278,7 +294,6 @@ char *getShift(char *opcode) {
 
     char* rest = opcodeDefinite;
     char* token = strtok_r(rest, " ", &rest);
-    // token = strtok_r(rest, ".", &rest);
 
     return createString(token);
 }
@@ -302,7 +317,7 @@ bool isDataProcessing(char *opcode) {
     char *ops[] = {"add", "adds", "sub", "subs", "cmp", "cmn", "neg", "negs", "and", "ands",
                    "bic", "bics", "eor", "orr", "eon", "orn", "tst", "movk", "movn",
                    "movz", "mov", "mvn", "madd", "msub", "mul", "mneg"};
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 26; i++) {
         if (strcmp(opcode, ops[i]) == 0) {
             return true;
         }
@@ -355,12 +370,7 @@ uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandlengt
     instruction |= (operands[0][0] == 'x') << 31;
     instruction |= encodeRegister(operands[0]);
     uint32_t opc = 0;
-    printf("%s\n", operands[0]);
-    printf("%s\n", operands[1]);
-    printf("%s\n", operands[2]);
-    printf("%s\n", operands[3]);
     for (int i = 0; i < 4; i++) {
-        printf("%s\n", operands[i]);
         if (strcmp(opcode, ops[i]) == 0) {
             opc = i;
             break;
@@ -393,27 +403,38 @@ uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandlengt
     }
     return instruction;
 }
-uint32_t assembleBitLogic(char *opcode, char **operands) {
+uint32_t assembleBitLogic(char *opcode, char **operands, int operandLength) {
     uint32_t instruction = 0;
     uint32_t sf = operands[0][0] == 'x';
     uint32_t rd = encodeRegister(operands[0]);
     uint32_t rn = encodeRegister(operands[1]);
     uint32_t rm = encodeRegister(operands[2]);
-    uint32_t shift = encodeShift(getShift(operands[3]));
-    uint32_t operand = encodeImm(getImm(operands[3]));
-    uint32_t opc;
-    uint32_t n;
+    uint32_t shift;
+    uint32_t operand;
+    if (operandLength == 3) {
+        shift = 0b00;
+        operand = 0b0;
+    } else {
+        shift = encodeShift(getShift(operands[3]));
+        operand = encodeImm(getImm(operands[3]));
+    }
+    printf("shift: %d\n", shift);
+    printf("operand: %d\n", operand);
+    uint32_t opc = 0;
+    uint32_t n = 0;
     char *ops[] = {"and", "bic",
                    "orr", "orn",
                    "eor", "eon",
                    "ands", "bics"};
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < 8; i++) {
         if (strcmp(ops[i], opcode) == 0) {
             opc = i >> 1;
             n = i & 0x1;
             break;
         }
     }
+    printf("opc: %d\n", opc);
+    printf("n: %d\n", n);
     uint32_t opr = (shift << 1) | n;
     instruction |= (sf << 31);
     instruction |= ((opc >> 1) << 29);
@@ -423,6 +444,7 @@ uint32_t assembleBitLogic(char *opcode, char **operands) {
     instruction |= (operand << 10);
     instruction |= (rn << 5);
     instruction |= (rd);
+    printf("instruction: %x\n", instruction);
     return instruction;
 }
 
@@ -442,7 +464,7 @@ uint32_t assembleTst(char *opcode, char **operands, int operandLength) {
     newOperands[2] = operands[1];
     newOperands[3] = createString(shifter);
 
-    return assembleBitLogic("ands", newOperands);
+    return assembleBitLogic("ands", newOperands, 4);
 }
 
 uint32_t assembleMov(char *opcode, char **operands, int operandLength) {
@@ -452,16 +474,16 @@ uint32_t assembleMov(char *opcode, char **operands, int operandLength) {
     }
     char *newOps[] = {operands[0], "xzr", operands[1],  shiftString};
     opcode = "orr";
-    return assembleBitLogic(opcode, newOps);
+    return assembleBitLogic(opcode, newOps, 4);
 }
 
-uint32_t assembleDataProcessing4(char *opcode, char **operands) {
+uint32_t assembleDataProcessing4(char *opcode, char **operands, int operandLength) {
     if (strcmp(opcode, "madd") == 0 || strcmp(opcode, "msub") == 0) {
         return assembleMaddMsub(opcode, operands);
     } else if (opcode[1] == 'd' || opcode[0] == 's') {
         return assembleArithmeticLogic(opcode, operands, 4);
     } else {
-        return assembleBitLogic(opcode, operands);
+        return assembleBitLogic(opcode, operands, operandLength);
     }
 }
 
@@ -491,6 +513,7 @@ uint32_t assembleNegNegs(char *opcode, char **operands, int operandLength) {
 }
 
 uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength) {
+    printf("FDDFFDFADDFA\n");
     char *ops[] = {
             "add", "adds", "sub", "subs",
             "cmp", "cmn", "neg", "negs",
@@ -500,27 +523,32 @@ uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength
             "mov", "mvn", "madd", "msub",
             "mul", "mneg"
     };
+    printf("OP: %s\n", opcode);
     int index;
     for (int i = 0; i < 26; ++i) {
-        if (ops[i] == opcode) {
+        if (strcmp(opcode, ops[i]) == 0) {
             index = i;
         }
     }
+    printf("index: %d\n", index);
     if (index < 6) {
+        printf("ADD\n");
         assembleArithmeticLogic(opcode, operands, operandLength);
     } else if (index < 8) {
         assembleNegNegs(opcode, operands, operandLength);
     } else if (index < 16) {
-        assembleBitLogic(opcode, operands);
+        printf("AND\n");
+        assembleBitLogic(opcode, operands, operandLength);
     } else if (index < 17) {
         assembleTst(opcode, operands, operandLength);
     } else if (index < 20) {
         assembleMove(opcode, operands, operandLength);
     } else if (index < 22) {
         assembleMov(opcode, operands, operandLength);
-    } else if (index < 29) {
+    } else if (index < 24) {
         assembleMaddMsub(opcode, operands);
     } else {
+        printf("FDASFDA\n");
         assembleMultiply(opcode, operands);
     }
 }
@@ -747,16 +775,32 @@ bool isVoid(char *opcode) {
     return strcmp(opcode, "nop") == 0;
 }
 
-void outputFile(uint8_t *memoryArray, char* filename) {
+void outputFile(uint8_t *memoryArray, char* filename, int numInstructions) {
     FILE *fp;
     fp = fopen(filename, "wb");
-    int count = 0;
-    while (memoryArray[count] != 0) {
-        count++;
-    }
-    fwrite(memoryArray, sizeof(uint32_t), count, fp);
+//    int count = 0;
+//    while (memoryArray[count] != 0) {
+//        count++;
+//    }
+    fwrite(memoryArray, sizeof(uint32_t), numInstructions, fp); //count
     fclose(fp); //Don't forget to close the file when finished
 }
+
+//void outputFile(uint8_t *memoryArray, char* filename) {
+//    FILE *fp;
+//    fp = fopen(filename, "wb");
+//    long long memAddress = 0;
+//    uint32_t data = loadData(memAddress, memoryArray, false);
+//    while (memAddress < MEMORY_COUNT) {
+//        memAddress += 4;
+//        if (data != 0) {
+//            fwrite(memoryArray, sizeof(uint32_t), count, fp);
+//            fprintf(fp, "0x%08llx : %08x\n", memAddress - 4, data);
+//        }
+//        data = loadData(memAddress, memoryArray, false);
+//    }
+//    fclose(fp); //Don't forget to close the file when finished
+//}
 
 void assemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
     LabelAddressMap **labelMap = allocateLabelMap();
@@ -766,25 +810,30 @@ void assemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
     int line = 0;
 
     while (assemblyArray[line] != NULL) {
-        line++;
+        printf("assembly: %s", assemblyArray[line]);
+        //line++;
         if (isLabel(assemblyArray[line])) {
             continue;
         }
 
         char *currentInstruction = assemblyArray[line];
         char *opcode = extractOpcode(currentInstruction);
+        printf("opcocde: %s\n", opcode);
         char **operands = extractOperands(currentInstruction);
-        int operandLength= 4;
+        int operandLength = 4;
         for (int i = 0; i < 4; i++) {
             if (operands[i] == 0) {
                 operandLength = i;
                 break;
             }
+            printf("operand %d: %s\n", i, operands[i]);
         }
-        printf("operandLength: %d", operandLength);
+        printf("operandLength: %d\n", operandLength);
         uint32_t instruction;
         if (isDataProcessing(opcode)) {
+            printf("This branch\n");
             instruction = assembleDataProcessing(opcode, operands, operandLength);
+            printf("RETURNEDDAFS\n");
         } else if (isDataTransfer(opcode)) {
             instruction = assembleDataTransfer(opcode, operands, operandLength, address, labelMap);
         } else if (isBranch(opcode)) {
@@ -795,29 +844,40 @@ void assemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
             instruction = assembleDirective(opcode, operands, operandLength);
         } else {
             printf("-----ERROR-----\n");
+            printf("opcode: %s\n", opcode);
             printf("NOT RECOGNISED: %s\n", assemblyArray[line]);
             return;
         }
         free(operands);
 
         storeData(instruction, address, memoryArray, false);
+        printf("END\n");
         address += 4;
-
+        line++;
     }
-    outputFile(memoryArray, filename);
+
+    outputFile(memoryArray, filename, line);
     freeLabelMap(labelMap);
 }
 
 int main(int argc, char **argv) {
-    char **assemblyArray = loadAssemblyFromFile(argv[1]);
+    char **assemblyArray;
+    char *outputFile;
+    if (argc != 1) {
+        assemblyArray = loadAssemblyFromFile(argv[1]);
+        outputFile = argv[2];
+    } else {
+        assemblyArray = loadAssemblyFromFile("../../armv8_testsuite/test/test_cases/general/add01.s");
+        outputFile = "output.bin";
+    }
+
     uint8_t *memPointer = calloc(MEMORY_COUNT, sizeof(uint8_t));
 
-    LabelAddressMap **labelMap = allocateLabelMap();
-    computeLabelMap(assemblyArray, labelMap);
+//    LabelAddressMap **labelMap = allocateLabelMap();
+//    computeLabelMap(assemblyArray, labelMap);
 
-    assemble(assemblyArray, memPointer, argv[2]);
+    assemble(assemblyArray, memPointer, outputFile);
 
-    freeLabelMap(labelMap);
     free(memPointer);
 
     return EXIT_SUCCESS;
