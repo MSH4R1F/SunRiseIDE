@@ -350,48 +350,54 @@ uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
 }
 
 uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandlength) {
-    char *ops[] = {"add", "adds", "sub", "subs"};
-    uint32_t instruction = 0;
-    instruction |= (operands[0][0] == 'x') << 31;
-    instruction |= encodeRegister(operands[0]);
-    uint32_t opc = 0;
-    printf("%s\n", operands[0]);
-    printf("%s\n", operands[1]);
-    printf("%s\n", operands[2]);
-    printf("%s\n", operands[3]);
-    for (int i = 0; i < 4; i++) {
-        printf("%s\n", operands[i]);
-        if (strcmp(opcode, ops[i]) == 0) {
-            opc = i;
-            break;
-        }
+  char *ops[] = {"add", "adds", "sub", "subs"};
+  uint32_t instruction = 0;
+  instruction |= (operands[0][0] == 'x') << 31;  // sf bit
+  uint32_t opc = 0;
+  for (int i = 0; i < 4; i++) {
+    if (strcmp(opcode, ops[i]) == 0) {
+      opc = i;
+      break;
     }
-    instruction |= opc << 29;
+  }
+  instruction |= opc << 29;  // opc bits
 
-    if (operands[2][0] != '#') {
-        instruction |= opc << 29;
-
-        uint32_t shift = encodeShift(getShift(operands[3]));
-        uint32_t rn = encodeRegister(operands[1]);
-        instruction = instruction | (1 << 24 | shift << 22);
-        uint32_t rm = encodeRegister(operands[2]);
-        instruction |= 5 << 25;
-        instruction |= rm << 16;
-        instruction |= encodeImm(getImm(operands[3]));
-        instruction |= rn << 5;
-
+  if (operands[2][0] == '#') {  // Immediate instruction
+    instruction |= 1 << 28;  // set bit 28 for "100"
+    instruction |= 2 << 23;  // set bits 25:23 for "010"
+    if (operandlength == 4) {
+      if (strcmp(operands[3], "lsl #12") == 0) {
+        instruction |= 1 << 22;
+      }
     }
-    else {
-        uint32_t shift = encodeShift(getShift(operands[3]));
-        uint32_t rn = encodeRegister(operands[1]);
-        uint32_t imm12 = encodeImm(operands[2]);
-        instruction |= 4 << 26;
-        instruction |= rn << 5;
-        instruction |= imm12 << 10;
-        instruction |= shift << 22;
-        instruction |= 2 << 23;
+    uint32_t operand = encodeImm(operands[2]);
+    instruction |= operand << 10;  // operand bits
+    instruction |= encodeRegister(operands[1]) << 5;
+    uint32_t rd = encodeRegister(operands[0]);
+    instruction |= rd;  // Rd bits
+
+  } else {  // Register instruction
+    printf("hello");
+    instruction |= 5 << 25;  // set bits 27:25 for "101"
+    uint32_t shift = 0;
+    if (operandlength == 4) {
+      shift = encodeShift(getShift(operands[3]));
     }
-    return instruction;
+    instruction |= shift << 21;  // opr bits with "1xx0"
+
+    uint32_t rm = encodeRegister(operands[2]);
+    instruction |= rm << 16;  // Rm bits
+
+    uint32_t operand = encodeImm(operands[3]);
+    instruction |= operand << 10;  // operand bits
+
+    uint32_t rn = encodeRegister(operands[1]);
+    instruction |= rn << 5;  // Rn bits
+
+    uint32_t rd = encodeRegister(operands[0]);
+    instruction |= rd;  // Rd bits
+  }
+  return instruction;
 }
 uint32_t assembleBitLogic(char *opcode, char **operands) {
     uint32_t instruction = 0;
