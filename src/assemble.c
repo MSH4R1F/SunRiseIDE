@@ -327,7 +327,7 @@ bool isDataProcessing(char *opcode) {
 
 
 uint32_t assembleMaddMsub(char *opcode, char **operands) {
-    uint32_t sf = operands[0][0] == 'X' ? 64 : 32;
+    uint32_t sf = operands[0][0] == 'x' ? 1 : 0;
     uint32_t instruction = sf << 31;
     instruction |= 0b0011011000 << 21;
     instruction |= encodeRegister(operands[2]) << 16;
@@ -448,7 +448,7 @@ uint32_t assembleBitLogic(char *opcode, char **operands, int operandLength) {
     printf("n: %d\n", n);
     uint32_t opr = (shift << 1) | n;
     instruction |= (sf << 31);
-    instruction |= ((opc >> 1) << 29);
+    instruction |= ((opc) << 29);
     instruction |= (5 << 25);
     instruction |= (opr << 21);
     instruction |= (rm << 16);
