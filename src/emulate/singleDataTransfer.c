@@ -6,6 +6,28 @@
 
 #include "memory.h"
 
+// Private function declarations
+static void loadStore(bool forceLoad, uint32_t instruction, long long readAddress, uint8_t *memPointer, struct RegisterStore *registerStore);
+static void executeImmediateOffset(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers);
+static void executeRegisterOffset(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers);
+static void preAndPostIndex(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers);
+static void executeLoadLiteral(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers);
+
+/// Determines which type of single data transfer instruction to execute based on the opcode
+void executeDataTransfer(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registerStore) {
+    bool isLiteral = (instruction >> 31) == 0;
+    bool isImmediate = (instruction >> 24) & 1;
+    if (isLiteral) {
+        executeLoadLiteral(instruction, memPointer, registerStore);
+    } else if (isImmediate) {
+        executeImmediateOffset(instruction, memPointer, registerStore);
+    } else if (((instruction >> 21) & 1) == 1) {
+        executeRegisterOffset(instruction, memPointer, registerStore);
+    } else {
+        preAndPostIndex(instruction, memPointer, registerStore);
+    }
+}
+
 void loadStore(bool forceLoad, uint32_t instruction, long long readAddress, uint8_t *memPointer, struct RegisterStore *registerStore) {
     bool isLoad = forceLoad | ((instruction >> 22) & 0x1);
     bool sf = (instruction >> 30) & 0x1;

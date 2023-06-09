@@ -17,6 +17,7 @@ uint64_t logicalLeftShift(uint64_t number, uint32_t shift, bool is64Bit) {
     }
 }
 
+/// Performs logical shift right
 uint64_t logicalRightShift(uint64_t number, uint32_t shift, bool is64Bit) {
     int wordSize = is64Bit ? 64 : 32;
     if (shift > wordSize) {
@@ -29,6 +30,7 @@ uint64_t logicalRightShift(uint64_t number, uint32_t shift, bool is64Bit) {
     return number >> shift;
 }
 
+/// Performs arithmetic shift right
 long long arithmeticRightShift(long long number, uint32_t shift, bool is64Bit) {
     int wordSize = is64Bit ? 64 : 32;
     uint64_t mask = is64Bit ? 0xFFFFFFFFFFFFFFFF : 0xFFFFFFFF;
@@ -43,6 +45,7 @@ long long arithmeticRightShift(long long number, uint32_t shift, bool is64Bit) {
     return logicalRightShift(number, shift, is64Bit);
 }
 
+/// Fileprivate helper function
 static uint64_t ToPow2(int power) {
     uint64_t x = 1;
     for (int i = 0; i < power; i++) {
@@ -51,6 +54,7 @@ static uint64_t ToPow2(int power) {
     return x;
 }
 
+/// Performs bitwise rotation
 long long rotateRight(long long number, uint32_t shift, bool is64Bit) {
     int wordSize = is64Bit ? 64 : 32;
     uint64_t mask = is64Bit ? 0xFFFFFFFFFFFFFFFF : 0xFFFFFFFF;

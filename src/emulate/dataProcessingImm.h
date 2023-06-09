@@ -12,9 +12,4 @@
 
     bool isDataProcessingImm(long long op0);
     void executeDataProcessingImm(uint32_t instruction, struct RegisterStore *registers);
-
-    bool isArithmeticProcessing(long long opi);
-
-    void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *registerStore);
-    void executeWideMoveProcessing(uint32_t instruction, struct RegisterStore *registers);
 #endif //ARMV8_27_DATAPROCESSINGIMM_H

@@ -9,25 +9,18 @@
 #include "flags.h"
 #include "dataProcessing.h"
 
+// Private function declarations
+static void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *registers);
+static void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *registers);
+static void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *registers);
+
+/// Returns whether op0 corresponds with data processing (register)
 bool isDataProcessingReg(long long op0) {
     long long match = 0xD;
     return (op0 | 0x8) == match;
 }
 
-long long shiftFun(uint32_t shift, long long reg, uint32_t operand, bool sizeBit) {
-    if (shift == 0) {
-        return logicalLeftShift(reg, operand, sizeBit);
-    } else if (shift == 1) {
-        return logicalRightShift(reg, operand, sizeBit);
-    } else if (shift == 2) {
-        return arithmeticRightShift(reg, operand, sizeBit);
-    } else {
-        return rotateRight(reg, operand, sizeBit);
-    }
-}
-
-
-
+/// Executes data processing (register) instruction
 void executeDataProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
     uint32_t opr = (instruction >> 21) & 0xF;
     uint32_t m = (instruction >> 28) & 0x1;
@@ -41,7 +34,21 @@ void executeDataProcessingReg(uint32_t instruction, struct RegisterStore *regist
     }
 }
 
-void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
+
+static long long shiftFun(uint32_t shift, long long reg, uint32_t operand, bool sizeBit) {
+    if (shift == 0) {
+        return logicalLeftShift(reg, operand, sizeBit);
+    } else if (shift == 1) {
+        return logicalRightShift(reg, operand, sizeBit);
+    } else if (shift == 2) {
+        return arithmeticRightShift(reg, operand, sizeBit);
+    } else {
+        return rotateRight(reg, operand, sizeBit);
+    }
+}
+
+/// Executes arithmetic processing (register) instruction
+static void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
     bool sf = instruction >> 31 & 0x1;
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t operand = (instruction >> 10) & 0x3F;
@@ -90,7 +97,8 @@ enum OpType {
     BICS
 };
 
-void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
+/// Executes logic processing (register) instruction
+static void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
     uint32_t shift = (instruction >> 22) & 0x3;
     uint32_t N = (instruction >> 21) & 0x1;
     uint32_t opc = (instruction >> 29) & 0x3;
@@ -148,7 +156,8 @@ void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *regis
     storeToRegister(rd, rd_val, registers, sf);
 }
 
-void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
+/// Executes multiply processing (register) instruction
+static void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *registers) {
     bool sf = instruction >> 31;
     int x = ((instruction >> 15) & 0x1) == 0x1 ? -1 : 1;
 

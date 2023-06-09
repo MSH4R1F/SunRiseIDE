@@ -8,10 +8,18 @@
 #include "flags.h"
 #include "dataProcessing.h"
 
+// Private functions declaration
+static bool isArithmeticProcessing(long long opi);
+static void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *registerStore);
+static void executeWideMoveProcessing(uint32_t instruction, struct RegisterStore *registers);
+
+/// Returns whether op0 corresponds with data processing (immediate)
 bool isDataProcessingImm(long long op0) {
     long long match = 0x9;
     return (op0 | 0x1) == match;
 }
+
+/// Executes data processing (immediate) instructions
 void executeDataProcessingImm(uint32_t instruction, struct RegisterStore *registers) {
     long long opi = (instruction >> 23) & 0x7;
 
@@ -22,12 +30,14 @@ void executeDataProcessingImm(uint32_t instruction, struct RegisterStore *regist
     }
 }
 
-bool isArithmeticProcessing(long long opi) {
+/// Returns whether opi corresponds with arithmetic processing
+static bool isArithmeticProcessing(long long opi) {
     long long match = 0x2;
     return opi == match;
 }
 
-void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *registerStore) {
+/// Executes arithmetic processing instructions
+static void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *registerStore) {
     uint32_t rd = instruction & 0x1F;
     uint32_t rn = (instruction >> 5) & 0x1F;
     uint32_t sf = instruction >> 31;
@@ -72,7 +82,8 @@ void executeArithmeticProcessingImm(uint32_t instruction, struct RegisterStore *
     storeToRegister(rd, res, registerStore, sf);
 }
 
-void executeWideMoveProcessing(uint32_t instruction, struct RegisterStore *registers) {
+/// Executes wide move instructions
+static void executeWideMoveProcessing(uint32_t instruction, struct RegisterStore *registers) {
     uint32_t rd = instruction & 0x1F;
     uint32_t hw = (instruction >> 21) & 0x3;
     uint64_t imm16 = (instruction >> 5) & 0xFFFF;

@@ -13,8 +13,4 @@
     bool isDataProcessingReg(long long op0);
 
     void executeDataProcessingReg(uint32_t instruction, struct RegisterStore *registers);
-
-    void executeArithmeticProcessingReg(uint32_t instruction, struct RegisterStore *registers);
-    void executeLogicProcessingReg(uint32_t instruction, struct RegisterStore *registers);
-    void executeMultiplyProcessingReg(uint32_t instruction, struct RegisterStore *registers);
 #endif //ARMV8_27_DATAPROCESSINGREG_H

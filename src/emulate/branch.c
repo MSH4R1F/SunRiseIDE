@@ -4,11 +4,13 @@
 
 #include "branch.h"
 
+/// Returns whether op0 corresponds with branch
 bool isBranch(long long op0) {
     long long match = 0xB;
     return (op0 | 0x1) == match;
 }
 
+/// Executes the branch instruction
 void executeBranch(uint32_t instruction, struct RegisterStore *registerStore) {
     enum OffsetType branchType = instruction >> 30 & 0x3;
     //
