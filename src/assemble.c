@@ -238,7 +238,6 @@ bool mapContainsLabel(char *label, LabelAddressMap **mapPointer) {
         if (!mapPointer[i]->wasAllocated) {
             continue;
         }
-        printf("small: '%s', big: '%s'\n", label, mapPointer[i]->label);
         if (strstr(mapPointer[i]->label, label)) {
             return true;
         }
@@ -402,56 +401,40 @@ uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
 }
 
 uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandLength) {
-    printf("--ARITHMETIC LOGIC\n");
-    printf("opcode:%s\n", opcode);
     char *ops[] = {"add", "adds", "sub", "subs"};
     uint32_t instruction = 0;
     instruction |= (operands[0][0] == 'x') << 31;  // sf bit
     uint32_t opc = 0;
     for (int i = 0; i < 4; i++) {
-        printf("ops[%d]: %s\n", i, ops[i]);
         if (strcmp(opcode, ops[i]) == 0) {
             opc = i;
             break;
         }
     }
-    printf("--OPC:   %d\n", opc);
     instruction |= opc << 29;  // opc bit
     if (operands[2][0] == '#') {  // Immediate instruction
         instruction |= 0b100 << 26; //bits 26 to 28
 //        instruction |= 1 << 28;  // set bit 28 for "100"
         instruction |= 0b010 << 23;  // set bits 25:23 for "010"
         if (operandLength == 4) {
-            printf("--operands[3]: %s\n", operands[3]);
             if (operands[3][5] == '1') {
-                printf("--LEFT SHIFTED 12\n");
                 instruction |= 1 << 22;
             }
         }
-        printf("--operands[2]: %s\n", operands[2]);
         uint32_t operand = encodeImm(operands[2], true);
-        printf("--operand: %d\n", operand);
         instruction |= operand << 10;  // operand bits
         instruction |= encodeRegister(operands[1]) << 5;
         uint32_t rd = encodeRegister(operands[0]);
         instruction |= rd;  // Rd bits
 
     } else {  // Register instruction
-        printf("---REGISTER\n");
         instruction |= 0b0101 << 25;  // set bits 27:25 for "101"
         uint32_t shift = 0;
         uint32_t operand = 0;
         if (operandLength == 4) {
-            printf("REACHES HERE\n");
-            printf("get shift: %s\n", getShift(operands[3]));
             shift = encodeShift(getShift(operands[3]));
-            printf("shift: %x\n", shift);
-            printf("get imm: %s", getImm(operands[3]));
             operand = encodeImm(getImm(operands[3]), true);
-            printf("operand: %x\n", operand);
         }
-        printf("--shift: %d\n", shift);
-        printf("--operand: %d\n", operand);
         instruction |= 1 << 24;  // first
         // bit in opr
         instruction |= shift << 22;  // shift bits with "1xx0" in opr
@@ -466,7 +449,6 @@ uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandLengt
         uint32_t rd = encodeRegister(operands[0]);
         instruction |= rd;  // Rd bits
     }
-    printf("RETURNS\n");
     return instruction;
 }
 
@@ -570,7 +552,6 @@ uint32_t assembleCmp(char *opcode, char **operands, int operandLength) {
 
     char *newOperands[4];
     newOperands[0] = zeroRegister;
-    printf("xero register: %s\n", zeroRegister);
     newOperands[1] = operands[0];
     newOperands[2] = operands[1];
 
@@ -583,10 +564,6 @@ uint32_t assembleCmp(char *opcode, char **operands, int operandLength) {
         newOpcode = "subs";
     } else {
         newOpcode = "adds";
-    }
-    printf("newOpcode: %s\n", newOpcode);
-    for (int i = 0; i < operandLength + 1; i++) {
-        printf("operands %d: %s\n", i, newOperands[i]);
     }
     return assembleArithmeticLogic(newOpcode, newOperands, operandLength + 1);
 }
@@ -637,15 +614,12 @@ uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength
 long long encodeLiteralToOffset(char *literal, long long currentAddress, LabelAddressMap **labelMap) {
     long long jumpAddress;
     if (mapContainsLabel(literal, labelMap)) {
-        printf("literal '%s' is recognised\n", literal);
         jumpAddress = getMapAddress(labelMap, literal);
     } else {
-        printf("literal '%s' not is recognised\n", literal);
         jumpAddress = atoll(literal);
     }
 
     long long offset = jumpAddress - currentAddress;
-    printf("---jumping to %08llx\n", jumpAddress);
     return offset;
 }
 
@@ -734,7 +708,6 @@ uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, 
 
     uint32_t instruction = 0;
     if (operandLength == 2 && operands[1][0] != '[') {
-        printf("LITERAL\n");
         instruction = assembleLoadLiteral(opcode, operands, currentAddress, sf, destReg, labelMap);
     } else {
         uint32_t instructionType = strcmp(opcode, "ldr") == 0 ? 1 : 0;
@@ -756,23 +729,17 @@ uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, 
                 srcRegister = operands[1];
             }
             uint32_t srcRegisterInt = encodeRegister(srcRegister);
-            printf("Src register: %x\n", srcRegisterInt);
-            printf("Offset: %s\n", immOffset);
-            printf("INSIDE FUNCTION\n");
             instruction = assembleUnsignedOffset(immOffset, destReg, sf, srcRegisterInt, instructionType);
-            printf("RETURNS\n");
         } else if (operands[2][strlen(operands[2]) - 1] == '!') {
             char *firstLetterRemoved = removeLastLetter(operands[2]);
             char *simmOffset = removeLastLetter(firstLetterRemoved);
             instruction = assemblePreIndex(simmOffset, destReg, sf, srcReg, instructionType);
         } else  {
             uint32_t offsetReg = encodeRegister(removeLastLetter(operands[2]));
-            printf("%d\n", offsetReg);
             instruction = assembleRegisterOffset(destReg, offsetReg, sf, srcReg, instructionType);
         }
     }
 
-    printf("--Ainstruction = %x\n", instruction);
     return instruction;
 }
 
@@ -787,14 +754,11 @@ bool isLabel(char *opcode) {
 }
 
 uint32_t assembleBranchConditional(char *condition, char *literal, long long currentAddress, LabelAddressMap **labelMap) {
-    printf("--BRANCH CONDITIONAL\n");
     uint32_t instruction = 0;
 
     if (strstr(condition, "eq")) {
-        printf("--BEQ\n");
         instruction = 0;
     } else if (strstr(condition, "ne")) {
-        printf("NE\n");
         instruction = 1;
     } else if (strstr(condition, "ge")) {
         instruction = 10;
@@ -856,7 +820,6 @@ char *getCondition(char *opcode) {
 
 uint32_t assembleBranch(char *opcode, char **operands, long long currentAddress, LabelAddressMap **labelMap) {
     if (strstr(opcode, ".")) {
-        printf("BRANCH CONDITIONAL\n");
         return assembleBranchConditional(getCondition(opcode), operands[0], currentAddress, labelMap);
     } else {
         if (strcmp(opcode, "br") == 0) {
@@ -886,29 +849,9 @@ bool isVoid(char *opcode) {
 void outputFile(uint8_t *memoryArray, char* filename, int numInstructions) {
     FILE *fp;
     fp = fopen(filename, "wb");
-//    int count = 0;
-//    while (memoryArray[count] != 0) {
-//        count++;
-//    }
     fwrite(memoryArray, sizeof(uint32_t), numInstructions, fp); //count
     fclose(fp); //Don't forget to close the file when finished
 }
-
-//void outputFile(uint8_t *memoryArray, char* filename) {
-//    FILE *fp;
-//    fp = fopen(filename, "wb");
-//    long long memAddress = 0;
-//    uint32_t data = loadData(memAddress, memoryArray, false);
-//    while (memAddress < MEMORY_COUNT) {
-//        memAddress += 4;
-//        if (data != 0) {
-//            fwrite(memoryArray, sizeof(uint32_t), count, fp);
-//            fprintf(fp, "0x%08llx : %08x\n", memAddress - 4, data);
-//        }
-//        data = loadData(memAddress, memoryArray, false);
-//    }
-//    fclose(fp); //Don't forget to close the file when finished
-//}
 
 void assemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
     LabelAddressMap **labelMap = allocateLabelMap();
