@@ -918,9 +918,6 @@ void assemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
     int line = 0;
 
     while (assemblyArray[line] != NULL) {
-        printf("-----ASSEMBLING LINE %d-----\n", line);
-        printf("assembly: '%s'\n", assemblyArray[line]);
-        //line++;
         if (isLabel(assemblyArray[line])) {
             line++;
             continue;
@@ -928,11 +925,9 @@ void assemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
 
         char *currentInstruction = assemblyArray[line];
         char *opcode = extractOpcode(currentInstruction);
-        printf("opc: %s\n", opcode);
         uint32_t instruction = 0;
 
         if (isVoid(opcode)) {
-            printf("-VOID\n");
             instruction = 0xD503201F;
         } else {
             char **operands = extractOperands(currentInstruction);
@@ -942,37 +937,24 @@ void assemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
                     operandLength = i;
                     break;
                 }
-                printf("opr %d: %s\n", i, operands[i]);
             }
 
-            printf("operandLength: %d\n", operandLength);
-
             if (isDataProcessing(opcode)) {
-                printf("-DATA PROCESSING\n");
                 instruction = assembleDataProcessing(opcode, operands, operandLength);
             } else if (isDataTransfer(opcode)) {
-                printf("-DATA TRANSFER\n");
                 instruction = assembleDataTransfer(opcode, operands, operandLength, address, labelMap);
             } else if (isBranch(opcode)) {
-                printf("-BRANCH\n");
                 instruction = assembleBranch(opcode, operands, address, labelMap);
             } else if (isDirective(opcode)) {
-                printf("-DIRECTIVE\n");
                 instruction = assembleDirective(opcode, operands, operandLength);
             } else {
-                printf("-----ERROR-----\n");
-                printf("opcode: %s\n", opcode);
-                printf("NOT RECOGNISED: %s\n", assemblyArray[line]);
                 return;
             }
 
             free(operands);
         }
 
-        printf("Returned instruction: %x\n", instruction);
-
         storeData(instruction, address, memoryArray, false);
-        printf("END\n");
         address += 4;
         line++;
     }
@@ -994,43 +976,11 @@ int main(int argc, char **argv) {
 
     uint8_t *memPointer = calloc(MEMORY_COUNT, sizeof(uint8_t));
 
-//    LabelAddressMap **labelMap = allocateLabelMap();
-//    computeLabelMap(assemblyArray, labelMap);
-
     assemble(assemblyArray, memPointer, outputFile);
 
     free(memPointer);
 
     return EXIT_SUCCESS;
 }
-
-//int main(int argc, char **argv) {
-//    char **assemblyArray = loadAssemblyFromFile(argv[1]);//calloc(ASSEMBLY_SIZE, sizeof(char *));
-//    uint8_t *memPointer = calloc(MEMORY_COUNT, sizeof(uint8_t));
-//
-//    assemblyArray[0] = "b execute"; //      0x00
-//    assemblyArray[1] = "movz x2, #1"; //    0x04
-//    assemblyArray[2] = "execute:";    //    0x08
-//    assemblyArray[3] = "movz x1, #1"; //    0x08
-//    assemblyArray[4] = "movz x3, #1"; //    0x0C
-//    assemblyArray[5] = "cmp x1, x3"; //     0x10
-//    assemblyArray[6] = "b.ge execute";   // 0x14
-//    assemblyArray[7] = "and x0, x0, x0"; // 0x18
-//
-//    LabelAddressMap **labelMap = allocateLabelMap();
-//    computeLabelMap(assemblyArray, labelMap);
-//    assemble(assemblyArray, memPointer, argv[2])
-//
-//    // ----BEGIN TESTS----
-//
-//
-//
-//    // -----END TESTS-----
-//
-//    freeLabelMap(labelMap);
-//    free(memPointer);
-//
-//    return EXIT_SUCCESS;
-//}
 
 
