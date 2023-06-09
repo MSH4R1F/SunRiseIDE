@@ -23,8 +23,10 @@ uint32_t encodeRegister(char *operand) {
     }
 }
 
-uint32_t encodeSimm(char *operand) {
-    operand++;
+uint32_t encodeSimm(char *operand, bool hasHash) {
+    if (hasHash) {
+        operand++;
+    }
     if (strstr(operand, "x")) {
         return strtol(operand, NULL, 16);
     } else {
@@ -32,8 +34,8 @@ uint32_t encodeSimm(char *operand) {
     }
 }
 
-uint32_t encodeImm(char *operand) {
-    return encodeSimm(operand);
+uint32_t encodeImm(char *operand, bool hasHash) {
+    return encodeSimm(operand, hasHash);
 }
 
 uint32_t encodeShift(char *operand) {
@@ -391,10 +393,10 @@ uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
     instruction |= 0b100101 << 23;
     uint32_t hw = 0;
     if (operandLength == 3) {
-        hw = encodeImm(getImm(operands[2])) / 16;
+        hw = encodeImm(getImm(operands[2]), true) / 16;
     }
     instruction |= hw << 21;
-    instruction |= encodeImm(operands[1]) << 5;
+    instruction |= encodeImm(operands[1], true) << 5;
     instruction |= encodeRegister(operands[0]);
     return instruction;
 }
@@ -427,7 +429,7 @@ uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandLengt
             }
         }
         printf("--operands[2]: %s\n", operands[2]);
-        uint32_t operand = encodeImm(operands[2]);
+        uint32_t operand = encodeImm(operands[2], true);
         printf("--operand: %d\n", operand);
         instruction |= operand << 10;  // operand bits
         instruction |= encodeRegister(operands[1]) << 5;
@@ -445,7 +447,7 @@ uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandLengt
             shift = encodeShift(getShift(operands[3]));
             printf("shift: %x\n", shift);
             printf("get imm: %s", getImm(operands[3]));
-            operand = encodeImm(getImm(operands[3]));
+            operand = encodeImm(getImm(operands[3]), true);
             printf("operand: %x\n", operand);
         }
         printf("--shift: %d\n", shift);
@@ -473,7 +475,7 @@ uint32_t assembleBitLogic(char *opcode, char **operands, int operandLength) {
     uint32_t operand = 0;
     if (operandLength == 4) {
         shift = encodeShift(getShift(operands[3]));
-        operand = encodeImm(getImm(operands[3]));
+        operand = encodeImm(getImm(operands[3]), true);
     }
     uint32_t instruction = 0;
     uint32_t sf = operands[0][0] == 'x';
@@ -652,7 +654,7 @@ static char *removeLastLetter(char* string) {
     for (int i = 0; i < strlen(string) - 1; i++) {
         strPointer[i] = string[i];
     }
-    strPointer[strlen(string)] = '\0';
+    strPointer[strlen(string) - 1] = '\0';
     return strPointer;
 }
 
@@ -676,7 +678,7 @@ uint32_t assemblePostIndex(char **operands, uint32_t destReg, uint32_t sf, uint3
     instruction |= (0b1110000 << 23);                       //bits 23 to 29 are constant when not unsigned offset
     instruction |= (instructionType << 22);                 //type of data transfer
     instruction |= (0 << 21);                               //21st bit if 0 for pre/post-index
-    instruction |= (encodeSimm(operands[2]) & 0x1FF) << 12;  //simm9
+    instruction |= (encodeSimm(operands[2], true) & 0x1FF) << 12;  //simm9
     instruction |= (0b01 << 10);                            //I and neighbouring bit
     instruction |= (srcReg << 5);                           //source register
     instruction |= destReg;                                 //destination register
@@ -689,11 +691,10 @@ uint32_t assemblePreIndex(char *simmOffset, uint32_t destReg, uint32_t sf, uint3
     instruction |= (0b1110000 << 23);                       //bits 23 to 29 are constant when not unsigned offset
     instruction |= (instructionType << 22);                 //type of data transfer
     instruction |= (0 << 21);                               //21st bit if 0 for pre/post-index
-    instruction |= (encodeSimm(simmOffset) << 12); //simm9
+    instruction |= ((encodeSimm(simmOffset, true) & 0x1FF) << 12); //simm9
     instruction |= (0b11 << 10);                            //I and neighbouring bit
     instruction |= (srcReg << 5);                           //source register
     instruction |= destReg;                                 //destination register
-    free(simmOffset);
     return instruction;
 }
 
@@ -702,10 +703,15 @@ uint32_t assembleUnsignedOffset(char *immOffset, uint32_t destReg, uint32_t sf, 
     instruction |= (sf << 30);                              //sf bit
     instruction |= (0b1110010 << 23);                       //bits 23 to 29 are constant
     instruction |= (instructionType << 22);                 //type of data transfer
-    instruction |= encodeImm(immOffset) << 10;    //imm12
+    uint32_t offsetInt = encodeImm(immOffset, true); // imm12 not shifted
+    if (sf) {
+        offsetInt /= 8;                             // offsetInt divided by 8 or 4 depending on bandwidth of Rt
+    } else {
+        offsetInt /= 4;
+    }
+    instruction |= (offsetInt & 0xFFF)<< 10;      //imm12
     instruction |= (srcReg << 5);                           //source register
     instruction |= destReg;                                 //destination register
-    free(immOffset);
     return instruction;
 }
 
@@ -727,26 +733,39 @@ uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, 
     uint32_t sf = operands[0][0] == 'w' ? 0 : 1;
 
     uint32_t instruction = 0;
-    if (operandLength == 2) {
+    if (operandLength == 2 && operands[1][0] != '[') {
         printf("LITERAL\n");
         instruction = assembleLoadLiteral(opcode, operands, currentAddress, sf, destReg, labelMap);
     } else {
         uint32_t instructionType = strcmp(opcode, "ldr") == 0 ? 1 : 0;
         operands[1]++;
         uint32_t srcReg = encodeRegister(operands[1]);
-        if (operands[1][strlen(operands[1]) - 1] == ']') {
+        if (operandLength == 3 && operands[1][strlen(operands[1]) - 1] == ']') {
             char *srcRegister = removeLastLetter(operands[1]);
             uint32_t srcRegisterInt = encodeRegister(srcRegister);
             free(srcRegister);
             instruction = assemblePostIndex(operands, destReg, sf, srcRegisterInt, instructionType);
+        } else if (operandLength == 2 || (operands[2][0] == '#' && operands[2][strlen(operands[2]) - 1] != '!')) {
+            char *immOffset;
+            char *srcRegister;
+            if (operandLength == 2) {
+                immOffset = "#0";
+                srcRegister = removeLastLetter(operands[1]);
+            } else {
+                immOffset = removeLastLetter(operands[2]);
+                srcRegister = operands[1];
+            }
+            uint32_t srcRegisterInt = encodeRegister(srcRegister);
+            printf("Src register: %x\n", srcRegisterInt);
+            printf("Offset: %s\n", immOffset);
+            printf("INSIDE FUNCTION\n");
+            instruction = assembleUnsignedOffset(immOffset, destReg, sf, srcRegisterInt, instructionType);
+            printf("RETURNS\n");
         } else if (operands[2][strlen(operands[2]) - 1] == '!') {
             char *firstLetterRemoved = removeLastLetter(operands[2]);
             char *simmOffset = removeLastLetter(firstLetterRemoved);
             instruction = assemblePreIndex(simmOffset, destReg, sf, srcReg, instructionType);
-        } else if (operands[2][0] == '#') {
-            char *immOffset = removeLastLetter(operands[2]);
-            instruction = assembleUnsignedOffset(immOffset, destReg, sf, srcReg, instructionType);
-        } else {
+        } else  {
             uint32_t offsetReg = encodeRegister(removeLastLetter(operands[2]));
             printf("%d\n", offsetReg);
             instruction = assembleRegisterOffset(destReg, offsetReg, sf, srcReg, instructionType);
@@ -855,7 +874,7 @@ bool isDirective(char *opcode) {
 }
 
 uint32_t assembleDirective(char *opcode, char **operands, int operandLength) {
-    return encodeSimm(operands[0]);
+    return encodeSimm(operands[0], false);
 }
 
 // assemble.c
@@ -969,7 +988,7 @@ int main(int argc, char **argv) {
         assemblyArray = loadAssemblyFromFile(argv[1]);
         outputFile = argv[2];
     } else {
-        assemblyArray = loadAssemblyFromFile("../../armv8_testsuite/test/test_cases/general/ldr11.s");
+        assemblyArray = loadAssemblyFromFile("../../armv8_testsuite/test/test_cases/general/str01.s");
         outputFile = "output.bin";
     }
 
