@@ -55,7 +55,6 @@ void processor(uint8_t *memPointer, char* filename, int argc) {
 }
 
 int main(int argc, char **argv) {
-    // Callocs memory of size 2MB
     uint8_t *memPointer = allocateMemory();
     loadMemoryFromFile(memPointer,argv[1]);
     if (argc == 2) {
