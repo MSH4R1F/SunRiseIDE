@@ -1,7 +1,3 @@
-//
-// Created by Faraz Malik on 09/06/2023.
-//
-
 #include "dataProcessingReg.h"
 
 #include "bitwiseShift.h"

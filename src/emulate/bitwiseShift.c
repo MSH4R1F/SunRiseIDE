@@ -1,9 +1,6 @@
-//
-// Created by Faraz Malik on 09/06/2023.
-//
-
 #include "bitwiseShift.h"
 
+/// Performs logical shift right
 uint64_t logicalLeftShift(uint64_t number, uint32_t shift, bool is64Bit) {
     int wordSize = is64Bit ? 64 : 32;
     if (shift > wordSize) {

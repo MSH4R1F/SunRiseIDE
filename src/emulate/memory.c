@@ -1,13 +1,8 @@
-//
-// Created by Faraz Malik on 09/06/2023.
-//
-
 #include "memory.h"
 
 #include "constants.h"
 
-// checks if the result has gone past the positive limit or negative limit
-
+/// Loads data from memory, converting from little endian
 long long loadData(long long address, uint8_t *memPointer, bool isDoubleWord) {
     int bytesCount = 4;
     if (isDoubleWord) {
@@ -31,11 +26,13 @@ long long loadData(long long address, uint8_t *memPointer, bool isDoubleWord) {
     return data;
 }
 
+/// Fetches an instruction from a specific address in memory
 uint32_t fetchInstruction(long long address, uint8_t *memPointer) {
     uint32_t data = loadData(address, memPointer, false);
     return data;
 }
 
+/// Stores data to memory, converting to little endian
 void storeData(long long data, long long address, uint8_t *memPointer, bool isDoubleWord) {
     int bytesCount = 4;
     if (isDoubleWord) {
@@ -50,6 +47,7 @@ void storeData(long long data, long long address, uint8_t *memPointer, bool isDo
     }
 }
 
+/// Allocates the 2MB memory on the heap and clears it
 uint8_t *allocateMemory(void) {
     uint8_t *memPointer = calloc(MEMORY_COUNT, sizeof(uint8_t));
     assert( memPointer != NULL );

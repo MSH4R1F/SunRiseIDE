@@ -1,12 +1,9 @@
-//
-// Created by Faraz Malik on 09/06/2023.
-//
-
 #include "fileUtils.h"
 
 #include "memory.h"
 #include "constants.h"
 
+/// Reads all the instructions from the input file and stores them in memory
 void loadMemoryFromFile(uint8_t *memPointer, char *filename) {
     int counter = 0;
     FILE *file = fopen(filename, "rb");  // Open the binary file in read mode
@@ -34,6 +31,7 @@ void loadMemoryFromFile(uint8_t *memPointer, char *filename) {
     }
 }
 
+/// Provides the core functionality of printing to a file or standard output
 static void output(struct __sFILE *target, struct RegisterStore *registers, struct PSTATE *stateRegister, uint8_t *memPointer) {
     fprintf(target, "Registers:\n");
     for (int i = 0; i < 31; i++) {
@@ -59,6 +57,7 @@ static void output(struct __sFILE *target, struct RegisterStore *registers, stru
     }
 }
 
+/// Prints output to a file
 void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, uint8_t *memPointer, char* filename) {
     FILE *fp;
     fp = fopen(filename, "w");
@@ -68,6 +67,7 @@ void outputFile(struct RegisterStore *registers, struct PSTATE *stateRegister, u
     fclose(fp); //Don't forget to close the file when finished
 }
 
+/// Prints output to terminal
 void outputTerminal(struct RegisterStore *registers, struct PSTATE *stateRegister, uint8_t *memPointer) {
     output(stdout, registers, stateRegister, memPointer);
 }

@@ -1,9 +1,6 @@
-//
-// Created by Faraz Malik on 09/06/2023.
-//
-
 #include "registers.h"
 
+/// Loads data from a register, checking for the zero register and masking appropriately
 long long loadFromRegister(uint32_t index, struct RegisterStore *registerStore, bool isDoubleWord) {
     long long data = registerStore->zeroRegister;
     if (index < 31) {
@@ -15,6 +12,7 @@ long long loadFromRegister(uint32_t index, struct RegisterStore *registerStore, 
     return data;
 }
 
+/// Stores data to a register, checking for the zero register and masking appropriately
 void storeToRegister(uint32_t index, long long data, struct RegisterStore *registerStore, bool isDoubleWord) {
     long long store = data;
     if (!isDoubleWord) {

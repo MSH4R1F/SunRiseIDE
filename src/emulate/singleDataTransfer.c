@@ -1,7 +1,3 @@
-//
-// Created by Faraz Malik on 09/06/2023.
-//
-
 #include "singleDataTransfer.h"
 
 #include "memory.h"
@@ -28,7 +24,8 @@ void executeDataTransfer(uint32_t instruction, uint8_t *memPointer, struct Regis
     }
 }
 
-void loadStore(bool forceLoad, uint32_t instruction, long long readAddress, uint8_t *memPointer, struct RegisterStore *registerStore) {
+/// Loads or stores data to registers or memory
+static void loadStore(bool forceLoad, uint32_t instruction, long long readAddress, uint8_t *memPointer, struct RegisterStore *registerStore) {
     bool isLoad = forceLoad | ((instruction >> 22) & 0x1);
     bool sf = (instruction >> 30) & 0x1;
     uint32_t rt = instruction & 0x1F;
@@ -41,7 +38,8 @@ void loadStore(bool forceLoad, uint32_t instruction, long long readAddress, uint
     }
 }
 
-void executeImmediateOffset(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
+/// Carries out an immediate offset instruction
+static void executeImmediateOffset(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
     bool sf = instruction >> 31;
 
     uint32_t xn = (instruction >> 5) & 0x1F;
@@ -60,7 +58,8 @@ void executeImmediateOffset(uint32_t instruction, uint8_t *memPointer, struct Re
     loadStore(false, instruction, readAddress, memPointer, registers);
 }
 
-void executeRegisterOffset(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
+/// Carries out a register offset instruction
+static void executeRegisterOffset(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
     uint32_t xn = (instruction >> 5) & 0x1F;
     uint32_t xm = (instruction >> 16) & 0x1F;
 
@@ -72,7 +71,8 @@ void executeRegisterOffset(uint32_t instruction, uint8_t *memPointer, struct Reg
     loadStore(false, instruction, readAddress, memPointer, registers);
 }
 
-void preAndPostIndex(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
+/// Carries out a pre or post index instruction
+static void preAndPostIndex(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
     uint32_t xn = (instruction >> 5) & 0x1F;
     long long xnValue = loadFromRegister(xn, registers, true);
 
@@ -98,7 +98,8 @@ void preAndPostIndex(uint32_t instruction, uint8_t *memPointer, struct RegisterS
     storeToRegister(xn, readAddress, registers, true);
 }
 
-void executeLoadLiteral(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
+/// Carries out a load literal instruction
+static void executeLoadLiteral(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registers) {
     int simm19 = (instruction >> 5) & 0x7FFFF;
 
     if (simm19 & 0x40000) {
@@ -110,18 +111,4 @@ void executeLoadLiteral(uint32_t instruction, uint8_t *memPointer, struct Regist
     long long readAddress = registers->programCounter + offset;
 
     loadStore(true, instruction, readAddress, memPointer, registers);
-}
-
-void executeDataTransfer(uint32_t instruction, uint8_t *memPointer, struct RegisterStore *registerStore) {
-    bool isLiteral = (instruction >> 31) == 0;
-    bool isImmediate = (instruction >> 24) & 1;
-    if (isLiteral) {
-        executeLoadLiteral(instruction, memPointer, registerStore);
-    } else if (isImmediate) {
-        executeImmediateOffset(instruction, memPointer, registerStore);
-    } else if (((instruction >> 21) & 1) == 1) {
-        executeRegisterOffset(instruction, memPointer, registerStore);
-    } else {
-        preAndPostIndex(instruction, memPointer, registerStore);
-    }
 }

@@ -1,7 +1,3 @@
-//
-// Created by Faraz Malik on 09/06/2023.
-//
-
 #include <stdint.h>
 
 #include "registers.h"

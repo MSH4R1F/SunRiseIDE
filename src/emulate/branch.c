@@ -1,7 +1,3 @@
-//
-// Created by Faraz Malik on 09/06/2023.
-//
-
 #include "branch.h"
 
 /// Returns whether op0 corresponds with branch
