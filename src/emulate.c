@@ -11,6 +11,7 @@
 // FILE: registers.h
 
 struct PSTATE;
+
 struct RegisterStore;
 
 // FILE: utils.h
