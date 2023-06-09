@@ -121,7 +121,7 @@ char** loadAssemblyFromFile(char *filename) {
         }
         fclose(fp);
 
-        char **newArray = calloc(lines, sizeof(char *));
+        char **newArray = calloc(lines + 1, sizeof(char *));
         int next = 0;
         for (int i = 0; i < lines; i++) {
             while (data[i][0] == ' ') {
