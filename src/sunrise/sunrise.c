@@ -17,6 +17,7 @@ bool getEditorExists(void) {
         fclose(file);
         return true;
     }
+
 }
 
 void openAssemblyEditor(void) {
