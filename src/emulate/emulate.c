@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     uint8_t *memPointer = allocateMemory();
     loadMemoryFromFile(memPointer,argv[1]);
     if (argc == 2) {
-        processor(memPointer, "", argc);
+        processor(memPointer, "output.txt", argc);
     } else {
         processor(memPointer, argv[2], argc);
     }

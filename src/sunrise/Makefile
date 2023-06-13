@@ -3,16 +3,16 @@
 CC	=	gcc
 CFLAGS	=	-g -Wall
 
-EXECS	=	assemble
+EXECS	= sunrise
 
 all:	$(EXECS)
 
-assemble.o:	assemble.c
+sunrise.o:	sunrise.c
 
-OBJS	=	 assemble.o
+OBJS	=	sunrise.o
 
 clean:
 	/bin/rm -f $(EXECS) $(OBJS) core a.out .nfs*
 
-assemble:		$(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o assemble $(LDFLAGS)
+sunrise:	$(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o sunrise $(LDFLAGS)
