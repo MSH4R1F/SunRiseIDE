@@ -5,9 +5,244 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <time.h>
+#include <string.h>
+#include <ctype.h>
+#include <regex.h>
+#include <assert.h>
 
 #include "sunrise.h"
+
+#define ASSEMBLY_SIZE 10
+#define MAX_ERROR_SIZE 256
+
+// FILE: labelMap.c
+
+bool isLabel(char *opcode) {
+    return strstr(opcode, ":");
+}
+
+typedef struct {
+    char *label;
+    long long address;
+    bool wasAllocated;
+} LabelAddressMap;
+
+LabelAddressMap *allocateLabelEntry(void) {
+    LabelAddressMap *entry = malloc( sizeof(LabelAddressMap) );
+    entry->wasAllocated = false;
+    return entry;
+}
+
+LabelAddressMap **allocateLabelMap(void) {
+    LabelAddressMap **mapPointer = malloc( ASSEMBLY_SIZE * sizeof(LabelAddressMap *) );
+
+    for (int i = 0; i < ASSEMBLY_SIZE; i++) {
+        mapPointer[i] = allocateLabelEntry();
+    }
+
+    return mapPointer;
+}
+
+void freeLabelMap(LabelAddressMap **mapPointer) {
+    for (int i = 0; i < ASSEMBLY_SIZE; i++) {
+        free(mapPointer[i]);
+    }
+    free(mapPointer);
+}
+
+void computeLabelMap(char **assemblyArray, LabelAddressMap **labelMap) {
+    int i = 0;
+    long long line = 0;
+    long long address = 0;
+
+    while (assemblyArray[line] != NULL) {
+        if (isLabel(assemblyArray[line])) {
+            char *label = assemblyArray[line];
+
+            labelMap[i]->label = label;
+            labelMap[i]->address = address;
+            labelMap[i]->wasAllocated = true;
+            i++;
+        } else {
+            address += 4;
+        }
+
+        line += 1;
+    }
+}
+
+long long getMapAddress(LabelAddressMap **mapPointer, char *label) {
+    for (int i = 0; i < ASSEMBLY_SIZE; i++) {
+        if (strstr(mapPointer[i]->label, label)) {
+            return mapPointer[i]->address;
+        }
+    }
+    return 0;
+}
+
+bool mapContainsLabel(char *label, LabelAddressMap **mapPointer) {
+    for (int i = 0; i < ASSEMBLY_SIZE; i++) {
+        if (!mapPointer[i]->wasAllocated) {
+            continue;
+        }
+        if (strstr(mapPointer[i]->label, label)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// utils.c
+
+//CEND      = '\33[0m';
+//CBOLD     = '\33[1m';
+//CITALIC   = '\33[3m';
+//CURL      = '\33[4m';
+//CBLINK    = '\33[5m';
+//CBLINK2   = '\33[6m';
+//CSELECTED = '\33[7m';
+//
+//CBLACK  = '\33[30m';
+//CRED    = '\33[31m';
+//CGREEN  = '\33[32m';
+//CYELLOW = '\33[33m';
+//CBLUE   = '\33[34m';
+//CVIOLET = '\33[35m';
+//CBEIGE  = '\33[36m';
+//CWHITE  = '\33[37m';
+//
+//CBLACKBG  = '\33[40m';
+//CREDBG    = '\33[41m';
+//CGREENBG  = '\33[42m';
+//CYELLOWBG = '\33[43m';
+//CBLUEBG   = '\33[44m';
+//CVIOLETBG = '\33[45m';
+//CBEIGEBG  = '\33[46m';
+//CWHITEBG  = '\33[47m';
+//
+//CGREY    = '\33[90m';
+//CRED2    = '\33[91m';
+//CGREEN2  = '\33[92m';
+//CYELLOW2 = '\33[93m';
+//CBLUE2   = '\33[94m';
+//CVIOLET2 = '\33[95m';
+//CBEIGE2  = '\33[96m';
+//CWHITE2  = '\33[97m';
+//
+//CGREYBG    = '\33[100m';
+//CREDBG2    = '\33[101m';
+//CGREENBG2  = '\33[102m';
+//CYELLOWBG2 = '\33[103m';
+//CBLUEBG2   = '\33[104m';
+//CVIOLETBG2 = '\33[105m';
+//CBEIGEBG2  = '\33[106m';
+//CWHITEBG2  = '\33[107m';
+
+typedef enum {
+    RED,
+    REDDER,
+    POTATO,
+    YELLOW,
+    YELLOWER,
+    GREY,
+    BLUE,
+    BLUER,
+    VIOLET,
+    RESET
+} TerminalColour;
+
+void setTerminalColour(TerminalColour colour) {
+    switch (colour) {
+        case RED:
+            printf("\033[1;31m"); break;
+        case POTATO:
+            printf("\033[93m"); break;
+        case YELLOW:
+            printf("\033[1;33m"); break;
+        case YELLOWER:
+            printf("\33[93m");
+        case REDDER:
+            printf("\33[91m"); break;
+        case GREY:
+            printf("\33[90m");
+        case BLUE:
+            printf("\33[34m");
+        case BLUER:
+            printf("\33[94m");
+        case VIOLET:
+            printf("\33[35m")
+        case RESET:
+            printf("\033[0m"); break;
+    }
+}
+
+void resetTerminalColour(void) {
+    setTerminalColour(RESET);
+}
+
+char** loadAssemblyLinesFromFile(char *filename) {
+    FILE *fp = fopen(filename, "r");
+
+    if( !fp ) {
+        fprintf(stderr, "Opened file: %s\n", filename);
+    }
+
+    // Count Lines
+    char cr;
+    size_t lines = 0;
+
+    while( cr != EOF ) {
+        if ( cr == '\n' ) {
+            lines++;
+        }
+        cr = getc(fp);
+    }
+    rewind(fp);
+
+    char **data = calloc(lines, sizeof(char *));
+    size_t n;
+
+    for (size_t i = 0; i < lines; i++) {
+        data[i] = NULL;
+        n = 0;
+
+        getline(&data[i], &n, fp);
+
+        if (ferror( fp )) {
+            fprintf(stderr, "Error reading from file\n");
+        }
+
+        data[i][strlen(data[i]) - 1] = '\0';
+    }
+    fclose(fp);
+
+    return data;
+}
+
+char **loadAssemblyFromLines(char **data, int lines) {
+    char **newArray = calloc(lines + 1, sizeof(char *));
+    int next = 0;
+
+    for (int i = 0; i < lines; i++) {
+        while (data[i][0] == ' ') {
+            data[i]++;
+        }
+
+        if (strlen(data[i]) != 1) {
+            newArray[next] = data[i];
+
+            int endIndex = strlen(newArray[next]) - 1;
+            while (newArray[next][endIndex] == ' ') {
+                newArray[next][endIndex] = '\0';
+                endIndex--;
+            }
+            next++;
+        }
+
+    }
+    return newArray;
+}
 
 bool getEditorExists(void) {
     FILE *file = fopen("editor.s", "r");
@@ -17,7 +252,6 @@ bool getEditorExists(void) {
         fclose(file);
         return true;
     }
-
 }
 
 void openAssemblyEditor(void) {
@@ -32,9 +266,92 @@ void openAssemblyEditor(void) {
     system("open editor.s");
 }
 
+bool stringBeginsWith(char delimiter, char *string) {
+    int i = 0;
+    while (isspace(string[i])) {
+        i++;
+    }
+    return string[i] == delimiter;
+}
+
+void addPrintMessage(char **errors, int line, char *lineString, char *message) {
+    char *error = calloc(256, sizeof(char));
+    sprintf(strlen(error) + error, "ERROR line %d:\n", line);
+    sprintf(strlen(error) + error, "  code - '%s'\n", lineString);
+    sprintf(strlen(error) + error, "  mesg - %s\n", message);
+
+    errors[line - 1] = error;
+}
+
+bool linePatternFailsCheck(char *line) {
+    regex_t regex;
+
+    int value;
+    value = regcomp(&regex, " *[:word:]", 0);
+
+    assert(value == 0);
+}
+
+bool checkSyntax(char *filename) {
+    char **assemblyArray = loadAssemblyLinesFromFile(filename);
+    int i = 0;
+    while (assemblyArray[i] != NULL) {
+        i++;
+    }
+    int linesCount = i;
+    char **errorsArray = calloc(i + 1, sizeof(char *));
+
+    bool foundSyntaxError = false;
+    for (i = 0; i < linesCount; i++) {
+        if (strlen(assemblyArray[i]) == 0) {
+            continue;
+        }
+
+        char *currentLine = assemblyArray[i];
+
+        if (isLabel(currentLine)) {
+            if (stringBeginsWith('.', currentLine)) {
+                continue;
+            } else {
+                addPrintMessage(errorsArray, i + 1, currentLine, "label must begin with '.'");
+                foundSyntaxError = true;
+            }
+        } else {
+            if (linePatternFailsCheck(currentLine)) {
+                addPrintMessage(errorsArray, i + 1, currentLine, "assembly not recognised");
+                foundSyntaxError = true;
+            }
+
+            // run regex pattern match
+            // if fails, print not-recognised style
+        }
+    }
+
+    if (!foundSyntaxError) {
+        return true;
+    }
+
+    setTerminalColour(YELLOW);
+    printf("COMPILE FAILED\nERRORS FOUND:\n\n");
+
+    setTerminalColour(RED);
+    for (i = 0; i < linesCount; i++) {
+        if (errorsArray[i] != NULL) {
+            char *currentError = errorsArray[i];
+            printf("%s\n", currentError);
+        }
+    }
+    resetTerminalColour();
+    return false;
+}
+
 bool assemble(void) {
     if (!getEditorExists()) {
         printf("'editor.s' not found.\n");
+        return false;
+    }
+
+    if (!checkSyntax("editor.s")) {
         return false;
     }
 
