@@ -13,6 +13,7 @@
 #include "sunrise.h"
 
 #define ASSEMBLY_SIZE 10
+#define MAX_LINE_SIZE 256
 #define MAX_ERROR_SIZE 256
 
 // FILE: labelMap.c
@@ -149,6 +150,8 @@ typedef enum {
     BLUE,
     BLUER,
     VIOLET,
+    VIOLETER,
+    GREEN,
     RESET
 } TerminalColour;
 
@@ -161,17 +164,21 @@ void setTerminalColour(TerminalColour colour) {
         case YELLOW:
             printf("\033[1;33m"); break;
         case YELLOWER:
-            printf("\33[93m");
+            printf("\33[93m"); break;
         case REDDER:
             printf("\33[91m"); break;
         case GREY:
-            printf("\33[90m");
+            printf("\33[90m"); break;
         case BLUE:
-            printf("\33[34m");
+            printf("\33[34m"); break;
         case BLUER:
-            printf("\33[94m");
+            printf("\33[94m"); break;
         case VIOLET:
-            printf("\33[35m")
+            printf("\33[35m"); break;
+        case VIOLETER:
+            printf("\33[95m"); break;
+        case GREEN:
+            printf("\33[32m"); break;
         case RESET:
             printf("\033[0m"); break;
     }
@@ -283,6 +290,131 @@ void addPrintMessage(char **errors, int line, char *lineString, char *message) {
     errors[line - 1] = error;
 }
 
+// patternMatch.c
+
+typedef enum {
+    OPC,
+    REG,
+    XREG,
+    SHIFT,
+    IMM,
+    LITERAL,
+    SIMM
+} keyPatterns;
+
+char *getKeyPattern(keyPatterns willy) {
+    char *pattern = calloc(MAX_LINE_SIZE, sizeof(char));
+    switch (willy) {
+        case OPC:
+            sprintf(pattern, "[a-z]{1-4}"); break;
+        case REG:
+            sprintf(pattern, "(x|w)[0-9]{1,2}"); break;
+        case XREG:
+            sprintf(pattern, "x[0-9]{1,2}"); break;
+        case SHIFT:
+            sprintf(pattern, "((a|l)s(s|r))"); break;
+        case IMM:
+            sprintf(pattern, "(0x([0-9]|[a-z]+)|([0-9]+)"); break;
+        case LITERAL:
+            sprintf(pattern, "(.[a-z]+)|%s",
+                    getKeyPattern(IMM)); break;
+        case SIMM:
+            sprintf(pattern, "-?%s",
+                    getKeyPattern(IMM)); break;
+    }
+    return pattern;
+}
+
+typedef enum {
+    SHIFT_IMM,
+    LS_12,
+    DP_NEGS,
+    DP_ADD,
+    DP_CMP,
+    DP_BITWISE,
+    DP_TST,
+    DP_MOVX,
+    DP_MOV,
+    DP_MVN,
+    DP_MADD,
+    DP_MUL
+} dpPatterns;
+
+char *getDpPattern(dpPatterns willy) {
+    char *pattern = calloc(MAX_LINE_SIZE, sizeof(char));
+    switch (willy) {
+        case LS_12:
+            sprintf(pattern, " *, *lsl +#(0)|(12)"); break;
+        case SHIFT_IMM:
+            sprintf(pattern, " *, *%s +#%s",
+                    getKeyPattern(SHIFT), getKeyPattern(IMM)); break;
+        case DP_ADD:
+            sprintf(pattern, "^ *(add)|(sub)s? +%s *, *%s *, *(#%s(%s)?)|(%s(%s)?) *$",
+                    getKeyPattern(REG), getKeyPattern(REG),
+                    getKeyPattern(IMM), getDpPattern(LS_12),
+                    getKeyPattern(REG), getDpPattern(SHIFT_IMM)); break;
+        case DP_CMP:
+            sprintf(pattern, "^ *cmp|n +%s *, *(#%s(%s)?)|(%s(%s)?) *$",
+                    getKeyPattern(REG), getKeyPattern(IMM),
+                    getDpPattern(LS_12), getKeyPattern(REG),
+                    getDpPattern(SHIFT_IMM)); break;
+        case DP_NEGS:
+            sprintf(pattern, "^ *negs? +%s *, *(#%s(%s)?)|(%s(%s)?) *$",
+                    getKeyPattern(REG), getKeyPattern(IMM),
+                    getDpPattern(LS_12), getKeyPattern(REG),
+                    getDpPattern(SHIFT_IMM)); break;
+        case DP_BITWISE:
+            sprintf(pattern, "^ *(ands?)|(bics?)|(eor)|(orr)|(eon)|(orn) +%s *, *%s *, *%s%s *$",
+                    getKeyPattern(REG), getKeyPattern(REG),
+                    getKeyPattern(REG), getDpPattern(SHIFT_IMM)); break;
+        case DP_TST:
+            sprintf(pattern, "^ *tst +%s *, *%s(%s)? *$",
+                    getKeyPattern(REG), getKeyPattern(REG),
+                    getDpPattern(SHIFT_IMM)); break;
+        case DP_MOVX:
+            sprintf(pattern, "^ *movk|n|z +%s *, *#%s%s *$",
+                    getKeyPattern(REG), getKeyPattern(IMM),
+                    getDpPattern(SHIFT_IMM)); break;
+        case DP_MOV:
+            sprintf(pattern, "^ *(mov)|(mvn) +%s *, *%s *$",
+                    getKeyPattern(REG), getKeyPattern(REG)); break;
+        case DP_MVN:
+            sprintf(pattern, "^ *(mov)|(mvn) +%s *, *%s%s *$",
+                    getKeyPattern(REG), getKeyPattern(REG),
+                    getDpPattern(SHIFT_IMM)); break;
+        case DP_MADD:
+            sprintf(pattern, "^ *m(add)|(sub) +%s *, *%s *, *%s *, *%s *$",
+                    getKeyPattern(REG), getKeyPattern(REG),
+                    getKeyPattern(REG), getKeyPattern(REG)); break;
+        case DP_MUL:
+            sprintf(pattern, "^ *m(ul)|(neg) +%s *, *%s *, *%s *$",
+                    getKeyPattern(REG), getKeyPattern(REG),
+                    getKeyPattern(REG)); break;
+    }
+
+    return pattern;
+}
+
+typedef enum {
+    B,
+    BR
+} branchPatterns;
+
+char *getBranchPattern(dpPatterns willy) {
+    char *pattern = calloc(MAX_LINE_SIZE, sizeof(char));
+    switch (willy) {
+        case B:
+            sprintf(pattern, "^ *b(.cond)? +%s *$",
+                    getKeyPattern(LITERAL));
+            break;
+        case BR:
+            sprintf(pattern, "^ *br +%s *$",
+                    getKeyPattern(XREG));
+            break;
+    }
+    return pattern;
+}
+
 bool linePatternFailsCheck(char *line) {
     regex_t regex;
 
@@ -386,11 +518,19 @@ int main(void) {
             case '2':
                 if (!assemble()) {
                     continue;
+                } else {
+                    setTerminalColour(GREEN);
+                    printf("\nCOMPILE SUCCEEDED\n\n");
+                    resetTerminalColour();
                 }
                 break;
             case '3':
                 if (!assemble()) {
                     continue;
+                } else {
+                    setTerminalColour(GREEN);
+                    printf("\nCOMPILE SUCCEEDED\n\n");
+                    resetTerminalColour();
                 }
                 emulate();
                 break;
