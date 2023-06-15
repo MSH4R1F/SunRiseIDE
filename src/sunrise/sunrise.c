@@ -112,15 +112,7 @@ bool mapContainsLabel(char *label, LabelAddressMap **mapPointer) {
 //CVIOLET = '\33[35m';
 //CBEIGE  = '\33[36m';
 //CWHITE  = '\33[37m';
-//
-//CBLACKBG  = '\33[40m';
-//CREDBG    = '\33[41m';
-//CGREENBG  = '\33[42m';
-//CYELLOWBG = '\33[43m';
-//CBLUEBG   = '\33[44m';
-//CVIOLETBG = '\33[45m';
-//CBEIGEBG  = '\33[46m';
-//CWHITEBG  = '\33[47m';
+
 //
 //CGREY    = '\33[90m';
 //CRED2    = '\33[91m';
@@ -131,16 +123,11 @@ bool mapContainsLabel(char *label, LabelAddressMap **mapPointer) {
 //CBEIGE2  = '\33[96m';
 //CWHITE2  = '\33[97m';
 //
-//CGREYBG    = '\33[100m';
-//CREDBG2    = '\33[101m';
-//CGREENBG2  = '\33[102m';
-//CYELLOWBG2 = '\33[103m';
-//CBLUEBG2   = '\33[104m';
-//CVIOLETBG2 = '\33[105m';
-//CBEIGEBG2  = '\33[106m';
-//CWHITEBG2  = '\33[107m';
+
 
 typedef enum {
+    ITALIC,
+    BOLD,
     RED,
     REDDER,
     POTATO,
@@ -157,12 +144,16 @@ typedef enum {
 
 void setTerminalColour(TerminalColour colour) {
     switch (colour) {
+        case ITALIC:
+            printf("\33[3m"); break;
+        case BOLD:
+            printf("\33[1m"); break;
         case RED:
-            printf("\033[1;31m"); break;
+            printf("\33[1;31m"); break;
         case POTATO:
-            printf("\033[93m"); break;
+            printf("\33[93m"); break;
         case YELLOW:
-            printf("\033[1;33m"); break;
+            printf("\33[1;33m"); break;
         case YELLOWER:
             printf("\33[93m"); break;
         case REDDER:
@@ -419,7 +410,7 @@ bool linePatternFailsCheck(char *line) {
     regex_t regex;
 
     int value;
-    value = regcomp(&regex, " *[:word:]", 0);
+    value = regcomp(&regex, getKeyPattern(OPC), 0);
 
     assert(value == 0);
 }
