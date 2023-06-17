@@ -12,7 +12,7 @@
 #include "singleDataTransfer.h"
 #include "branch.h"
 
-void processor(uint8_t *memPointer, char* filename, int argc) {
+void run(uint8_t *memPointer, char* filename, int argc) {
     struct PSTATE stateRegister = { false, true, false, false };
     struct RegisterStore registerStore;
     registerStore.programCounter = 0;
@@ -54,14 +54,26 @@ void processor(uint8_t *memPointer, char* filename, int argc) {
     }
 }
 
-int main(int argc, char **argv) {
+int processor(int argc, char **argv, bool isDebug) {
     uint8_t *memPointer = allocateMemory();
     loadMemoryFromFile(memPointer,argv[1]);
     if (argc == 2) {
-        processor(memPointer, "output.txt", argc);
+        if (isDebug) {
+
+        } else {
+            run(memPointer, "output.txt", argc);
+        }
     } else {
-        processor(memPointer, argv[2], argc);
+        if (isDebug) {
+
+        } else {
+            run(memPointer, argv[2], argc);
+        }
     }
     free(memPointer);
     return EXIT_SUCCESS;
+}
+
+int main(int argc, char **argv) {
+    return processor(argc, argv, false);
 }

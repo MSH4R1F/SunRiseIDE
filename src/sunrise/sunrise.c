@@ -8,9 +8,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <regex.h>
+#include <ctype.h>
 #include <assert.h>
-
-#include "sunrise.h"
 
 #define ASSEMBLY_SIZE 10
 #define MAX_LINE_SIZE 256
@@ -187,7 +186,7 @@ char** loadAssemblyLinesFromFile(char *filename) {
     }
 
     // Count Lines
-    char cr;
+    char cr = '\0';
     size_t lines = 0;
 
     while( cr != EOF ) {
@@ -210,8 +209,11 @@ char** loadAssemblyLinesFromFile(char *filename) {
         if (ferror( fp )) {
             fprintf(stderr, "Error reading from file\n");
         }
-
         data[i][strlen(data[i]) - 1] = '\0';
+
+        for (int j = 0; data[i][j] != '\0'; j++) {
+            data[i][j] = tolower(data[i][j]);
+        }
     }
     fclose(fp);
 
@@ -272,7 +274,7 @@ bool stringBeginsWith(char delimiter, char *string) {
     return string[i] == delimiter;
 }
 
-void addPrintMessage(char **errors, int line, char *lineString, char *message) {
+void addErrorMessage(char **errors, int line, char *lineString, char *message) {
     char *error = calloc(256, sizeof(char));
     sprintf(strlen(error) + error, "ERROR line %d:\n", line);
     sprintf(strlen(error) + error, "  code - '%s'\n", lineString);
@@ -284,7 +286,6 @@ void addPrintMessage(char **errors, int line, char *lineString, char *message) {
 // patternMatch.c
 
 typedef enum {
-    OPC,
     REG,
     XREG,
     SHIFT,
@@ -296,18 +297,16 @@ typedef enum {
 char *getKeyPattern(keyPatterns willy) {
     char *pattern = calloc(MAX_LINE_SIZE, sizeof(char));
     switch (willy) {
-        case OPC:
-            sprintf(pattern, "[a-z]{1-4}"); break;
         case REG:
             sprintf(pattern, "(x|w)[0-9]{1,2}"); break;
         case XREG:
             sprintf(pattern, "x[0-9]{1,2}"); break;
         case SHIFT:
-            sprintf(pattern, "((a|l)s(s|r))"); break;
+            sprintf(pattern, "((a|l)s(l|r))"); break;
         case IMM:
-            sprintf(pattern, "(0x([0-9]|[a-z]+)|([0-9]+)"); break;
+            sprintf(pattern, "((0x([0-9]|([a-z]))+)|([0-9]+))"); break;
         case LITERAL:
-            sprintf(pattern, "(.[a-z]+)|%s",
+            sprintf(pattern, "(.[a-z]+)|(%s)",
                     getKeyPattern(IMM)); break;
         case SIMM:
             sprintf(pattern, "-?%s",
@@ -340,45 +339,45 @@ char *getDpPattern(dpPatterns willy) {
             sprintf(pattern, " *, *%s +#%s",
                     getKeyPattern(SHIFT), getKeyPattern(IMM)); break;
         case DP_ADD:
-            sprintf(pattern, "^ *(add)|(sub)s? +%s *, *%s *, *(#%s(%s)?)|(%s(%s)?) *$",
+            sprintf(pattern, "^ *((add)|(sub))s? +%s *, *%s *, *((#%s(%s)?)|(%s(%s)?)) *$",
                     getKeyPattern(REG), getKeyPattern(REG),
                     getKeyPattern(IMM), getDpPattern(LS_12),
                     getKeyPattern(REG), getDpPattern(SHIFT_IMM)); break;
         case DP_CMP:
-            sprintf(pattern, "^ *cmp|n +%s *, *(#%s(%s)?)|(%s(%s)?) *$",
+            sprintf(pattern, "^ *(cmp|n) +%s *, *((#%s(%s)?)|(%s(%s)?)) *$",
                     getKeyPattern(REG), getKeyPattern(IMM),
                     getDpPattern(LS_12), getKeyPattern(REG),
                     getDpPattern(SHIFT_IMM)); break;
         case DP_NEGS:
-            sprintf(pattern, "^ *negs? +%s *, *(#%s(%s)?)|(%s(%s)?) *$",
+            sprintf(pattern, "^ *negs? +%s *, *((#%s(%s)?)|(%s(%s)?)) *$",
                     getKeyPattern(REG), getKeyPattern(IMM),
                     getDpPattern(LS_12), getKeyPattern(REG),
                     getDpPattern(SHIFT_IMM)); break;
         case DP_BITWISE:
-            sprintf(pattern, "^ *(ands?)|(bics?)|(eor)|(orr)|(eon)|(orn) +%s *, *%s *, *%s%s *$",
+            sprintf(pattern, "^( *((ands?)|(bics?)|(eor)|(orr)|(eon)|(orn)) +%s *, *%s *, *%s%s *)$",
                     getKeyPattern(REG), getKeyPattern(REG),
                     getKeyPattern(REG), getDpPattern(SHIFT_IMM)); break;
         case DP_TST:
-            sprintf(pattern, "^ *tst +%s *, *%s(%s)? *$",
+            sprintf(pattern, "^( *tst +%s *, *%s(%s)? *)$",
                     getKeyPattern(REG), getKeyPattern(REG),
                     getDpPattern(SHIFT_IMM)); break;
         case DP_MOVX:
-            sprintf(pattern, "^ *movk|n|z +%s *, *#%s%s *$",
+            sprintf(pattern, "^( *mov(k|n|z) +%s *, *#%s( *, *lsl +#%s)? *)$",
                     getKeyPattern(REG), getKeyPattern(IMM),
-                    getDpPattern(SHIFT_IMM)); break;
+                    getKeyPattern(IMM)); break;
         case DP_MOV:
-            sprintf(pattern, "^ *(mov)|(mvn) +%s *, *%s *$",
+            sprintf(pattern, "^( *mov +%s *, *%s *)$",
                     getKeyPattern(REG), getKeyPattern(REG)); break;
         case DP_MVN:
-            sprintf(pattern, "^ *(mov)|(mvn) +%s *, *%s%s *$",
+            sprintf(pattern, "^( *mvn +%s *, *%s(%s)? *)$",
                     getKeyPattern(REG), getKeyPattern(REG),
                     getDpPattern(SHIFT_IMM)); break;
         case DP_MADD:
-            sprintf(pattern, "^ *m(add)|(sub) +%s *, *%s *, *%s *, *%s *$",
+            sprintf(pattern, "^( *m((add)|(sub)) +%s *, *%s *, *%s *, *%s *)$",
                     getKeyPattern(REG), getKeyPattern(REG),
                     getKeyPattern(REG), getKeyPattern(REG)); break;
         case DP_MUL:
-            sprintf(pattern, "^ *m(ul)|(neg) +%s *, *%s *, *%s *$",
+            sprintf(pattern, "^( *m((ul)|(neg)) +%s *, *%s *, *%s *)$",
                     getKeyPattern(REG), getKeyPattern(REG),
                     getKeyPattern(REG)); break;
     }
@@ -391,28 +390,114 @@ typedef enum {
     BR
 } branchPatterns;
 
-char *getBranchPattern(dpPatterns willy) {
+char *getBranchPattern(branchPatterns willy) {
     char *pattern = calloc(MAX_LINE_SIZE, sizeof(char));
     switch (willy) {
         case B:
-            sprintf(pattern, "^ *b(.cond)? +%s *$",
-                    getKeyPattern(LITERAL));
-            break;
+            sprintf(pattern, "^( *b(.cond)? +%s *)$",
+                    getKeyPattern(LITERAL)); break;
         case BR:
-            sprintf(pattern, "^ *br +%s *$",
-                    getKeyPattern(XREG));
-            break;
+            sprintf(pattern, "^( *br +%s *)$",
+                    getKeyPattern(XREG)); break;
     }
     return pattern;
 }
 
-bool linePatternFailsCheck(char *line) {
+bool matchFails(char *lineString, char *pattern) {
     regex_t regex;
-
-    int value;
-    value = regcomp(&regex, getKeyPattern(OPC), 0);
-
+    int value = regcomp(&regex, pattern, REG_EXTENDED|REG_NOSUB);
     assert(value == 0);
+    return regexec(&regex, lineString, 0, NULL, 0) != 0;
+}
+
+bool lineWasValid(char *lineString, char **errorsArray, int line) {
+    char lineCopy[MAX_LINE_SIZE];
+    sprintf(lineCopy, "%s", lineString);
+    char *opcode = strtok(lineCopy, " ");
+
+    if (strcmp(opcode, "add") == 0 || strcmp(opcode, "adds") == 0
+        || strcmp(opcode, "sub") == 0 || strcmp(opcode, "subs") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_ADD))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for add/sub(s)?: <Rd|SP>, <Rn|SP>, #<imm>{, lsl #(0|12)} OR <Rd>, <Rn>, <Rm>{, <shift> #<imm>}");
+            return false;
+        }
+    } else if (strcmp(opcode, "cmp") == 0 || strcmp(opcode, "cmn") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_CMP))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for cm(p/n): <Rn|SP>, #<imm>{, <lsl #(0|12)>}<Rn>, <Rm>{, <shift> #<imm>}");
+            return false;
+        }
+    } else if (strcmp(opcode, "neg") == 0 || strcmp(opcode, "negs") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_NEGS))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for neg(s)?: <Rd|SP>,  #<imm>{, lsl #(0|12)}<Rd>, <Rm>{, <shift> #<imm>}");
+            return false;
+        }
+        return getDpPattern(DP_CMP);
+    } else if (strcmp(opcode, "and") == 0 || strcmp(opcode, "ands") == 0
+        || strcmp(opcode, "bic") == 0 || strcmp(opcode, "bics") == 0
+        || strcmp(opcode, "eor") == 0 || strcmp(opcode, "orr") == 0
+        || strcmp(opcode, "eon") == 0 || strcmp(opcode, "orn") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_BITWISE))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for bitwise: <Rd>, <Rn>, <Rm>, <shift> #<imm>");
+            return false;
+        }
+    } else if (strcmp(opcode, "tst") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_TST))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for tst: <Rn>, <Rm>{, <shift> #<imm>}");
+            return false;
+        }
+    } else if (strcmp(opcode, "movk") == 0 || strcmp(opcode, "movn") == 0
+        || strcmp(opcode, "movz") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_MOVX))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for tst: <Rd>, #<imm>{, lsl #<imm>}");
+            return false;
+        }
+    } else if (strcmp(opcode, "mov") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_MOV))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for mov: <Rd>, <Rn>");
+            return false;
+        }
+    } else if (strcmp(opcode, "mvn") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_MVN))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for mvn: <Rd>, <Rm>{, <shift> #<imm>}");
+            return false;
+        }
+    } else if (strcmp(opcode, "madd") == 0 || strcmp(opcode, "msub") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_MADD))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for m(add/sub): <Rd>, <Rn>, <Rm>, <Ra>");
+            return false;
+        }
+    } else if (strcmp(opcode, "mul") == 0 || strcmp(opcode, "mneg") == 0) {
+        if (matchFails(lineString, getDpPattern(DP_MUL))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for (mul/mneg): <Rd>, <Rn>, <Rm>");
+            return false;
+        }
+    } else if (strcmp(opcode, "b") == 0 || strcmp(opcode, "b.cond") == 0) {
+        if (matchFails(lineString, getBranchPattern(B))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for b(.cond)?: <literal>");
+            return false;
+        }
+    } else if (strcmp(opcode, "br") == 0) {
+        if (matchFails(lineString, getBranchPattern(BR))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for br: <Xn>");
+            return false;
+        }
+    } else {
+        addErrorMessage(errorsArray, line, lineString, "opcode not recognised");
+        return false;
+    }
+    return true;
 }
 
 bool checkSyntax(char *filename) {
@@ -426,33 +511,35 @@ bool checkSyntax(char *filename) {
 
     bool foundSyntaxError = false;
     for (i = 0; i < linesCount; i++) {
+        char *currentLine = assemblyArray[i];
+
+        while (currentLine[0] == ' ') {
+            currentLine++;
+        }
         if (strlen(assemblyArray[i]) == 0) {
             continue;
         }
-
-        char *currentLine = assemblyArray[i];
 
         if (isLabel(currentLine)) {
             if (stringBeginsWith('.', currentLine)) {
                 continue;
             } else {
-                addPrintMessage(errorsArray, i + 1, currentLine, "label must begin with '.'");
+                addErrorMessage(errorsArray, i + 1, currentLine,
+        "label must begin with '.'");
                 foundSyntaxError = true;
             }
         } else {
-            if (linePatternFailsCheck(currentLine)) {
-                addPrintMessage(errorsArray, i + 1, currentLine, "assembly not recognised");
+            if (!lineWasValid(currentLine, errorsArray, i + 1)) {
                 foundSyntaxError = true;
             }
-
-            // run regex pattern match
-            // if fails, print not-recognised style
         }
     }
 
     if (!foundSyntaxError) {
         return true;
     }
+
+    system("clear");
 
     setTerminalColour(YELLOW);
     printf("COMPILE FAILED\nERRORS FOUND:\n\n");
@@ -525,6 +612,14 @@ int main(void) {
                 }
                 emulate();
                 break;
+            case '4':
+                if (!assemble()) {
+                    continue;
+                } else {
+                    setTerminalColour(GREEN);
+                    printf("\nCOMPILE SUCCEEDED\n\n");
+                    resetTerminalColour();
+                }
             case '5':
                 system("clear");
                 return EXIT_SUCCESS;
