@@ -4,6 +4,9 @@
 
 #include "assembleFileUtils.h"
 
+// private functions declaration
+static char **loadAssemblyFromLines(char **data, int lines);
+
 char **loadAssemblyLinesFromFile(char *filename) {
     FILE *fp = fopen(filename, "r");
 
@@ -46,7 +49,25 @@ char **loadAssemblyLinesFromFile(char *filename) {
     return data;
 }
 
-char **loadAssemblyFromLines(char **data, int lines) {
+char **loadAssemblyFromFile(char *filename) {
+    char **data = loadAssemblyLinesFromFile(filename);
+    int lines = 0;
+
+    while (data[lines] != NULL) {
+        lines++;
+    }
+
+    return loadAssemblyFromLines(data, lines);;
+}
+
+void writeMachineToFile(uint8_t *memPointer, char *filename, int numInstructions) {
+    FILE *fp;
+    fp = fopen(filename, "wb");
+    fwrite(memPointer, sizeof(uint32_t), numInstructions, fp); //count
+    fclose(fp); //Don't forget to close the file when finished
+}
+
+static char **loadAssemblyFromLines(char **data, int lines) {
     char **newArray = calloc(lines + 1, sizeof(char *));
     int next = 0;
 
@@ -68,24 +89,4 @@ char **loadAssemblyFromLines(char **data, int lines) {
 
     }
     return newArray;
-}
-
-char **loadAssemblyFromFile(char *filename) {
-    char **data = loadAssemblyLinesFromFile(filename);
-    int lines = 0;
-
-    while (data[lines] != NULL) {
-        lines++;
-    }
-
-    char **assembly = loadAssemblyFromLines(data, lines);
-
-    return assembly;
-}
-
-void writeMachineToFile(uint8_t *memPointer, char *filename, int numInstructions) {
-    FILE *fp;
-    fp = fopen(filename, "wb");
-    fwrite(memPointer, sizeof(uint32_t), numInstructions, fp); //count
-    fclose(fp); //Don't forget to close the file when finished
 }

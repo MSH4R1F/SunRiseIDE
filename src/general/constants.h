@@ -7,4 +7,5 @@
 
     #define MEMORY_COUNT 2097152
     #define ASSEMBLY_SIZE 10
+    #define MAX_LINE_LENGTH 256
 #endif //ARMV8_27_CONSTANTS_H

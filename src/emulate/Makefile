@@ -7,9 +7,9 @@ EXECS	=	emulate
 
 all:	$(EXECS)
 
-emulate.o:	emulate.c fileUtils.h ../general/memory.h registers.h bitwiseShift.h dataProcessingImm.h dataProcessingReg.h singleDataTransfer.h branch.h
+emulate.o:	emulate.c emulateFileUtils.h ../general/memory.h registers.h bitwiseShift.h dataProcessingImm.h dataProcessingReg.h singleDataTransfer.h branch.h
 
-fileUtils.o:	fileUtils.c fileUtils.h ../general/memory.h ../general/constants.h
+fileUtils.o:	emulateFileUtils.c emulateFileUtils.h ../general/memory.h ../general/constants.h
 
 ../general/memory.o:	../general/memory.c ../general/memory.h ../general/constants.h
 
@@ -17,7 +17,7 @@ registers.o:	registers.c registers.h
 
 bitwiseShift.o:	bitwiseShift.c bitwiseShift.h
 
-dataProcessingImm.o:	dataProcessingImm.c dataProcessingImm.h fileUtils.h flags.h dataProcessing.h
+dataProcessingImm.o:	dataProcessingImm.c dataProcessingImm.h emulateFileUtils.h flags.h dataProcessing.h
 
 dataProcessingReg.o:	dataProcessingReg.c dataProcessingReg.h bitwiseShift.h ../general/memory.h flags.h dataProcessing.h
 

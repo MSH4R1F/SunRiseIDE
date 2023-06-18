@@ -1,7 +1,7 @@
-#include <stdlib.h>
-#include <stdbool.h>
 
-#include "fileUtils.h"
+#include "emulate.h"
+
+#include "emulateFileUtils.h"
 #include "../general/memory.h"
 
 #include "registers.h"
@@ -12,7 +12,35 @@
 #include "singleDataTransfer.h"
 #include "branch.h"
 
-void run(uint8_t *memPointer, char* filename, int argc) {
+// private function declarations
+static void runEmulate(uint8_t *memPointer, char* filename, int argc);
+static void debugEmulate(uint8_t *memPointer);
+
+int emulate(int argc, char **argv, bool isDebug) {
+    uint8_t *memPointer = allocateMemory();
+    loadMemoryFromFile(memPointer,argv[1]);
+    if (argc == 2) {
+        if (isDebug) {
+            debugEmulate(memPointer);
+        } else {
+            runEmulate(memPointer, "output.txt", argc);
+        }
+    } else {
+        if (isDebug) {
+            debugEmulate(memPointer);
+        } else {
+            runEmulate(memPointer, argv[2], argc);
+        }
+    }
+    free(memPointer);
+    return EXIT_SUCCESS;
+}
+
+int main(int argc, char **argv) {
+    return emulate(argc, argv, false);
+}
+
+static void runEmulate(uint8_t *memPointer, char* filename, int argc) {
     struct PSTATE stateRegister = { false, true, false, false };
     struct RegisterStore registerStore;
     registerStore.programCounter = 0;
@@ -54,26 +82,16 @@ void run(uint8_t *memPointer, char* filename, int argc) {
     }
 }
 
-int processor(int argc, char **argv, bool isDebug) {
-    uint8_t *memPointer = allocateMemory();
-    loadMemoryFromFile(memPointer,argv[1]);
-    if (argc == 2) {
-        if (isDebug) {
+static void debugEmulate(uint8_t *memPointer) {
+    struct PSTATE stateRegister = { false, true, false, false };
+    struct RegisterStore registerStore;
+    registerStore.programCounter = 0;
+    registerStore.zeroRegister = 0;
+    registerStore.stateRegister = &stateRegister;
 
-        } else {
-            run(memPointer, "output.txt", argc);
-        }
-    } else {
-        if (isDebug) {
-
-        } else {
-            run(memPointer, argv[2], argc);
-        }
+    for (int i = 0; i < sizeof(registerStore.registers) / sizeof(registerStore.registers[0]); i++) {
+        registerStore.registers[i] = 0;
     }
-    free(memPointer);
-    return EXIT_SUCCESS;
-}
 
-int main(int argc, char **argv) {
-    return processor(argc, argv, false);
+    system("clear");
 }

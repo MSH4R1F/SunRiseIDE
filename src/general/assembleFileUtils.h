@@ -11,7 +11,6 @@
     #define ARMV8_27_ASSEMBLEFILEUTILS_H
 
     char **loadAssemblyLinesFromFile(char *filename);
-    char **loadAssemblyFromLines(char **data, int lines);
     char** loadAssemblyFromFile(char *filename);
     void writeMachineToFile(uint8_t *memPointer, char *filename, int numInstructions);
 #endif //ARMV8_27_ASSEMBLEFILEUTILS_H
