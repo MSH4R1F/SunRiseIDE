@@ -1,7 +1,7 @@
 #include "dataProcessingReg.h"
 
 #include "bitwiseShift.h"
-#include "memory.h"
+#include "../general/memory.h"
 #include "flags.h"
 #include "dataProcessing.h"
 

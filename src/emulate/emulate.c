@@ -2,7 +2,7 @@
 #include <stdbool.h>
 
 #include "fileUtils.h"
-#include "memory.h"
+#include "../general/memory.h"
 
 #include "registers.h"
 #include "bitwiseShift.h"

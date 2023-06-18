@@ -1,6 +1,6 @@
 #include "singleDataTransfer.h"
 
-#include "memory.h"
+#include "../general/memory.h"
 
 // Private function declarations
 static void loadStore(bool forceLoad, uint32_t instruction, long long readAddress, uint8_t *memPointer, struct RegisterStore *registerStore);

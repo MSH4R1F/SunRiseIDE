@@ -1,7 +1,7 @@
 #include "fileUtils.h"
 
-#include "memory.h"
-#include "constants.h"
+#include "../general/memory.h"
+#include "../general/constants.h"
 
 /// Reads all the instructions from the input file and stores them in memory
 void loadMemoryFromFile(uint8_t *memPointer, char *filename) {

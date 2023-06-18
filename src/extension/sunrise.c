@@ -8,7 +8,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <regex.h>
-#include <ctype.h>
 #include <assert.h>
 
 #define ASSEMBLY_SIZE 10
@@ -534,6 +533,8 @@ bool checkSyntax(char *filename) {
             }
         }
     }
+
+    // build labelMap and check branch labels
 
     if (!foundSyntaxError) {
         return true;
