@@ -146,7 +146,9 @@ static bool lineWasValid(char *lineString, char **errorsArray, int line) {
     sprintf(lineCopy, "%s", lineString);
     char *opcode = strtok(lineCopy, " ");
 
-    if (strcmp(opcode, "add") == 0 || strcmp(opcode, "adds") == 0
+    if (!matchFails(lineString, "^( *and *x0 *, *x0 *, *x0 *)$")) {
+
+    } else if (strcmp(opcode, "add") == 0 || strcmp(opcode, "adds") == 0
         || strcmp(opcode, "sub") == 0 || strcmp(opcode, "subs") == 0) {
         if (matchFails(lineString, getDpPattern(DP_ADD))) {
             addErrorMessage(errorsArray, line, lineString,
