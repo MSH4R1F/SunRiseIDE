@@ -36,10 +36,6 @@ int emulate(int argc, char **argv, bool isDebug) {
     return EXIT_SUCCESS;
 }
 
-int main(int argc, char **argv) {
-    return emulate(argc, argv, false);
-}
-
 static void runEmulate(uint8_t *memPointer, char* filename, int argc) {
     struct PSTATE stateRegister = { false, true, false, false };
     struct RegisterStore registerStore;
@@ -67,7 +63,7 @@ static void runEmulate(uint8_t *memPointer, char* filename, int argc) {
         } else if (isDataProcessingReg(op0)) {
             executeDataProcessingReg(instruction, &registerStore);
             registerStore.programCounter += 4;
-        } else if (isBranch(op0)) {
+        } else if (isBranchM(op0)) {
             executeBranch(instruction, &registerStore);
         } else {
             executeDataTransfer(instruction, memPointer, &registerStore);

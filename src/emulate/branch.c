@@ -1,7 +1,7 @@
 #include "branch.h"
 
 /// Returns whether op0 corresponds with branch
-bool isBranch(long long op0) {
+bool isBranchM(long long op0) {
     long long match = 0xB;
     return (op0 | 0x1) == match;
 }

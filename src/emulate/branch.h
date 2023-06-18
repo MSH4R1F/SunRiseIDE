@@ -10,7 +10,7 @@
 #ifndef ARMV8_27_BRANCH_H
     #define ARMV8_27_BRANCH_H
 
-    bool isBranch(long long op0);
+    bool isBranchM(long long op0);
     void executeBranch(uint32_t instruction, struct RegisterStore *registerStore);
 
     enum OffsetType {

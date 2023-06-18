@@ -7,6 +7,7 @@ EXECS	=	assemble
 
 all:	$(EXECS)
 
+main.o: main.c assemble.h
 assemble.o:	assemble.c ../general/memory.h ../general/labelMap.h ../general/assembleFileUtils.h key.h tokenUtils.h branch.h dataProcessing.h dataTransfer.h directive.h
 
 ../general/memory.o:	../general/memory.c ../general/memory.h ../general/constants.h
@@ -27,7 +28,7 @@ dataTransfer.o:	dataTransfer.c dataTransfer.h key.h
 
 directive.o:	directive.c directive.h key.h
 
-OBJS	=	 assemble.o ../general/memory.o ../general/labelMap.o ../general/assembleFileUtils.o key.o tokenUtils.o branch.o dataProcessing.o dataTransfer.o directive.o
+OBJS	= main.o assemble.o ../general/memory.o ../general/labelMap.o ../general/assembleFileUtils.o key.o tokenUtils.o branch.o dataProcessing.o dataTransfer.o directive.o
 
 clean:
 	/bin/rm -f $(EXECS) $(OBJS) core a.out .nfs*

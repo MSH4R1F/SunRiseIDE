@@ -34,10 +34,6 @@ int assemble(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
-int main(int argc, char **argv) {
-    return assemble(argc, argv);
-}
-
 static bool isVoid(char *opcode) {
     return strcmp(opcode, "nop") == 0;
 }

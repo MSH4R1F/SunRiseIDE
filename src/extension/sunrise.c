@@ -6,18 +6,16 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <ctype.h>
 #include <regex.h>
-#include <assert.h>
 
 #include "../emulate/emulate.h"
 #include "../assemble/assemble.h"
-#include "../general/constants.h"
 #include "../general/labelMap.h"
 #include "../general/assembleFileUtils.h"
 #include "../general/terminalColor.h"
 
 #include "patternMatch.h"
+#include "checkSyntax.h"
 
 bool getEditorExists(void) {
     FILE *file = fopen("editor.s", "r");
