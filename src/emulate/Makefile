@@ -11,7 +11,7 @@ emulate.o:	emulate.c fileUtils.h ../general/memory.h registers.h bitwiseShift.h 
 
 fileUtils.o:	fileUtils.c fileUtils.h ../general/memory.h ../general/constants.h
 
-memory.o:	../general/memory.c ../general/memory.h ../general/constants.h
+../general/memory.o:	../general/memory.c ../general/memory.h ../general/constants.h
 
 registers.o:	registers.c registers.h
 
@@ -27,7 +27,7 @@ branch.o:	branch.c branch.h
 
 flags.o:	flags.c flags.h
 
-OBJS	=	 emulate.o fileUtils.o memory.o registers.o bitwiseShift.o dataProcessingImm.o dataProcessingReg.o singleDataTransfer.o branch.o flags.o
+OBJS	=	 emulate.o fileUtils.o ../general/memory.o registers.o bitwiseShift.o dataProcessingImm.o dataProcessingReg.o singleDataTransfer.o branch.o flags.o
 
 clean:
 	/bin/rm -f $(EXECS) $(OBJS) core a.out .nfs*

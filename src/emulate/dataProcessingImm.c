@@ -56,10 +56,8 @@ static void executeArithmeticProcessingImm(uint32_t instruction, struct Register
     long long reg = loadFromRegister(rn, registerStore, true);
 
     long long res;
-    bool multiplier = -1;
     if (opc == ADD || opc == ADDS) {
         res = reg + op;
-        multiplier = 1;
     } else {
         res = reg - op;
     }
@@ -69,7 +67,6 @@ static void executeArithmeticProcessingImm(uint32_t instruction, struct Register
         registerStore->stateRegister->negativeFlag = res < 0;
         registerStore->stateRegister->zeroFlag = res == 0;
 
-        bool V = overunderflow(reg, multiplier * op, res);
         bool C = carry(reg, op, opc == ADDS, sf); //ADDS
         registerStore->stateRegister->carryFlag = C;
         registerStore->stateRegister->overflowFlag = reg > 0 && res < 0;

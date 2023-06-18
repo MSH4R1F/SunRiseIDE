@@ -55,7 +55,7 @@ char **loadAssemblyFromLines(char **data, int lines) {
             data[i]++;
         }
 
-        if (strlen(data[i]) != 1) {
+        if (strlen(data[i]) != 0) {
             newArray[next] = data[i];
 
             int endIndex = strlen(newArray[next]) - 1;
@@ -79,11 +79,6 @@ char **loadAssemblyFromFile(char *filename) {
     }
 
     char **assembly = loadAssemblyFromLines(data, lines);
-
-    for (int i = 0; i < lines; i++) {
-        free(data[i]);
-    }
-    free(data);
 
     return assembly;
 }

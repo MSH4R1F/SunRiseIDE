@@ -9,11 +9,11 @@ all:	$(EXECS)
 
 assemble.o:	assemble.c ../general/memory.h ../general/labelMap.h ../general/assembleFileUtils.h key.h tokenUtils.h branch.h dataProcessing.h dataTransfer.h directive.h
 
-../general/memory.o:	../general/memory.c memory.h constants.h
+../general/memory.o:	../general/memory.c ../general/memory.h ../general/constants.h
 
-../general/labelMap.o:	../general/labelMap.c labelMap.h constants.h
+../general/labelMap.o:	../general/labelMap.c ../general/labelMap.h ../general/constants.h
 
-../general/assembleFileUtils.o:	../general/assembleFileUtils.c assembleFileUtils.h
+../general/assembleFileUtils.o:	../general/assembleFileUtils.c ../general/assembleFileUtils.h
 
 key.o:	key.c key.h
 

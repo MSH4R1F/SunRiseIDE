@@ -25,6 +25,7 @@ void assemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
     int line = 0;
 
     while (assemblyArray[line] != NULL) {
+        printf("line: '%s'\n", assemblyArray[line]);
         if (isLabel(assemblyArray[line])) {
             line++;
             continue;
@@ -77,17 +78,14 @@ int main(int argc, char **argv) {
         assemblyArray = loadAssemblyFromFile(argv[1]);
         outputFile = argv[2];
     } else {
-        assemblyArray = loadAssemblyFromFile("../../armv8_testsuite/test/test_cases/general/str01.s");
+        printf("in main\n");
+        assemblyArray = loadAssemblyFromFile("../../../armv8_testsuite/test/test_cases/general/str01.s");
+        printf("loaded assembly from file\n");
         outputFile = "output.bin";
     }
 
     uint8_t *memPointer = allocateMemory();
     assemble(assemblyArray, memPointer, outputFile);
-
-    for (int i = 0; assemblyArray[i] != NULL; i++) {
-        free(assemblyArray[i]);
-    }
-    free(assemblyArray);
 
     free(memPointer);
 
