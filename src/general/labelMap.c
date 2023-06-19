@@ -5,6 +5,7 @@
 #include "labelMap.h"
 
 #include "constants.h"
+#include <stdio.h>
 
 bool isLabel(char *opcode) {
     return strstr(opcode, ":");
@@ -64,11 +65,14 @@ long long getMapAddress(LabelAddressMap **mapPointer, char *label) {
 }
 
 bool mapContainsLabel(char *label, LabelAddressMap **mapPointer) {
+    printf("checking label: '%s'\n", label);
+
     for (int i = 0; i < ASSEMBLY_SIZE; i++) {
         if (!mapPointer[i]->wasAllocated) {
             continue;
         }
         if (strstr(mapPointer[i]->label, label)) {
+            printf("label %s recognised\n", label);
             return true;
         }
     }

@@ -46,7 +46,6 @@ static void runAssemble(char **assemblyArray, uint8_t *memoryArray, char *filena
     int line = 0;
 
     while (assemblyArray[line] != NULL) {
-        printf("line: '%s'\n", assemblyArray[line]);
         if (isLabel(assemblyArray[line])) {
             line++;
             continue;

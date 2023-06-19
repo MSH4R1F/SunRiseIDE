@@ -56,8 +56,7 @@ bool checkSyntax(char *filename) {
         }
     }
 
-    // build labelMap and check branch labels
-
+    // only checks labels if syntax ok
     if (!foundSyntaxError && checkLabels(assemblyLines, errorsArray)) {
         return true;
     }
@@ -93,6 +92,8 @@ static bool checkLabels(char **assemblyLines, char **errorsArray) {
 
         char *opcode = extractOpcode(assemblyLines[i]);
         if (isBranch(opcode)) {
+            printf("branch: %s\n", assemblyLines[i]);
+
             char *literal = extractOperands(assemblyLines[i])[0];
             if (literal[0] == '.') {
                 if (!mapContainsLabel(literal, labelMap)) {
@@ -104,8 +105,10 @@ static bool checkLabels(char **assemblyLines, char **errorsArray) {
             } else {
                 char *endPointer = NULL;
                 strtoll(literal, &endPointer, 10);
-
-                if (endPointer == assemblyLines[i]) {
+                printf("Hello\n");
+                printf("literal:     '%s'\n", literal);
+                printf("end pointer: '%s'\n", endPointer);
+                if (endPointer != NULL && strcmp(literal, endPointer) == 0) {
                     addErrorMessage(errorsArray, i + 1, assemblyLines[i],
             "label must begin with '.'");
                     foundLabelError = true;
@@ -152,19 +155,20 @@ static bool lineWasValid(char *lineString, char **errorsArray, int line) {
         || strcmp(opcode, "sub") == 0 || strcmp(opcode, "subs") == 0) {
         if (matchFails(lineString, getDpPattern(DP_ADD))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for add/sub(s)?: <Rd|SP>, <Rn|SP>, #<imm>{, lsl #(0|12)} OR <Rd>, <Rn>, <Rm>{, <shift> #<imm>}");
+    "usage for add/sub(s)?: <Rd|SP>, <Rn|SP>, #<imm>{, lsl #(0|12)}\n     "
+            "OR <Rd>, <Rn>, <Rm>{, <shift> #<imm>}");
             return false;
         }
     } else if (strcmp(opcode, "cmp") == 0 || strcmp(opcode, "cmn") == 0) {
         if (matchFails(lineString, getDpPattern(DP_CMP))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for cm(p/n): <Rn|SP>, #<imm>{, <lsl #(0|12)>}<Rn>, <Rm>{, <shift> #<imm>}");
+    "usage for cm(p/n): <Rn|SP>, #<imm>{, <lsl #(0|12)>}<Rn>, <Rm>{, <shift> #<imm>}");
             return false;
         }
     } else if (strcmp(opcode, "neg") == 0 || strcmp(opcode, "negs") == 0) {
         if (matchFails(lineString, getDpPattern(DP_NEGS))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for neg(s)?: <Rd|SP>,  #<imm>{, lsl #(0|12)}<Rd>, <Rm>{, <shift> #<imm>}");
+    "usage for neg(s)?: <Rd|SP>,  #<imm>{, lsl #(0|12)}<Rd>, <Rm>{, <shift> #<imm>}");
             return false;
         }
         return getDpPattern(DP_CMP);
@@ -174,56 +178,68 @@ static bool lineWasValid(char *lineString, char **errorsArray, int line) {
                || strcmp(opcode, "eon") == 0 || strcmp(opcode, "orn") == 0) {
         if (matchFails(lineString, getDpPattern(DP_BITWISE))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for bitwise: <Rd>, <Rn>, <Rm>, <shift> #<imm>");
+    "usage for bitwise: <Rd>, <Rn>, <Rm>, <shift> #<imm>");
             return false;
         }
     } else if (strcmp(opcode, "tst") == 0) {
         if (matchFails(lineString, getDpPattern(DP_TST))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for tst: <Rn>, <Rm>{, <shift> #<imm>}");
+    "usage for tst: <Rn>, <Rm>{, <shift> #<imm>}");
             return false;
         }
     } else if (strcmp(opcode, "movk") == 0 || strcmp(opcode, "movn") == 0
                || strcmp(opcode, "movz") == 0) {
         if (matchFails(lineString, getDpPattern(DP_MOVX))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for tst: <Rd>, #<imm>{, lsl #<imm>}");
+    "usage for tst: <Rd>, #<imm>{, lsl #<imm>}");
             return false;
         }
     } else if (strcmp(opcode, "mov") == 0) {
         if (matchFails(lineString, getDpPattern(DP_MOV))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for mov: <Rd>, <Rn>");
+    "usage for mov: <Rd>, <Rn>");
             return false;
         }
     } else if (strcmp(opcode, "mvn") == 0) {
         if (matchFails(lineString, getDpPattern(DP_MVN))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for mvn: <Rd>, <Rm>{, <shift> #<imm>}");
+    "usage for mvn: <Rd>, <Rm>{, <shift> #<imm>}");
             return false;
         }
     } else if (strcmp(opcode, "madd") == 0 || strcmp(opcode, "msub") == 0) {
         if (matchFails(lineString, getDpPattern(DP_MADD))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for m(add/sub): <Rd>, <Rn>, <Rm>, <Ra>");
+    "usage for m(add/sub): <Rd>, <Rn>, <Rm>, <Ra>");
             return false;
         }
     } else if (strcmp(opcode, "mul") == 0 || strcmp(opcode, "mneg") == 0) {
         if (matchFails(lineString, getDpPattern(DP_MUL))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for (mul/mneg): <Rd>, <Rn>, <Rm>");
+    "usage for (mul/mneg): <Rd>, <Rn>, <Rm>");
             return false;
         }
-    } else if (strcmp(opcode, "b") == 0 || strcmp(opcode, "b.cond") == 0) {
+    } else if (strcmp(opcode, "ldr") == 0 || strcmp(opcode, "str") == 0) {
+        if (matchFails(lineString, getDataTransferPattern(LDL))
+        && matchFails(lineString, getDataTransferPattern(STR))) {
+            addErrorMessage(errorsArray, line, lineString,
+    "usage for ldr/str: \n        "
+            "<Rt>, [<Xn|SP>], #<simm>\n        "
+            "<Rt>, [<Xn|SP>, #<simm>]!\n        "
+            "<Rt>, [<Xn|SP>, #<imm>]\n        "
+            "<Rt>, [<Xn|SP>, <Xm>]\n     "
+            "OR <Rt>, <literal>");
+            return false;
+        }
+    } else if (strcmp(opcode, "b") == 0 || strstr(opcode, "b.")) {
         if (matchFails(lineString, getBranchPattern(B))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for b(.cond)?: <literal>");
+    "usage for b(.cond)?: <literal>");
             return false;
         }
     } else if (strcmp(opcode, "br") == 0) {
         if (matchFails(lineString, getBranchPattern(BR))) {
             addErrorMessage(errorsArray, line, lineString,
-                            "usage for br: <Xn>");
+    "usage for br: <Xn>");
             return false;
         }
     } else {

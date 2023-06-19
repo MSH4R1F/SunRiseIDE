@@ -16,9 +16,9 @@ char *getKeyPattern(keyPattern key) {
         case SHIFT:
             sprintf(pattern, "((a|l)s(l|r))"); break;
         case IMM:
-            sprintf(pattern, "((0x([0-9]|([a-z]))+)|([0-9]+))"); break;
+            sprintf(pattern, "((0x([0-9]|[a-z])+)|(([0-9])+))"); break;
         case LITERAL:
-            sprintf(pattern, "(.[a-z]+)|(%s)",
+            sprintf(pattern, "((.[a-z]+)|%s)",
                     getKeyPattern(IMM)); break;
         case SIMM:
             sprintf(pattern, "-?%s",
@@ -78,16 +78,32 @@ char *getDpPattern(dpPattern key) {
                     getKeyPattern(REG), getKeyPattern(REG),
                     getKeyPattern(REG)); break;
     }
+    return pattern;
+}
 
+char *getDataTransferPattern(dataTransferPattern key) {
+    char *pattern = calloc(MAX_LINE_LENGTH, sizeof(char));
+    switch (key) {
+        case STR:
+            sprintf(pattern, "^( *((str)|(ldr)) +%s *, *\\[ *%s(( *\\]( *, *#%s)?)|( *, *((#%s *\\]!)|(#%s *\\])|(%s *\\])))) *)$",
+                    getKeyPattern(REG), getKeyPattern(REG),
+                    getKeyPattern(SIMM), getKeyPattern(SIMM),
+                    getKeyPattern(IMM), getKeyPattern(XREG)); break;
+        case LDL:
+            sprintf(pattern, "^( *ldr +%s *, *%s *)$",
+                    getKeyPattern(REG), getKeyPattern(LITERAL)); break;
+    }
     return pattern;
 }
 
 char *getBranchPattern(branchPattern key) {
     char *pattern = calloc(MAX_LINE_LENGTH, sizeof(char));
     switch (key) {
+        case COND:
+            sprintf(pattern, "((eq)|(ne)|(ge)|(lt)|(gt)|(le)|(al))"); break;
         case B:
-            sprintf(pattern, "^( *b(.cond)? +%s *)$",
-                    getKeyPattern(LITERAL)); break;
+            sprintf(pattern, "^( *b(.%s)? +%s *)$",
+                    getBranchPattern(COND), getKeyPattern(LITERAL)); break;
         case BR:
             sprintf(pattern, "^( *br +%s *)$",
                     getKeyPattern(XREG)); break;

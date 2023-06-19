@@ -9,9 +9,15 @@
     #define ARMV8_27_PATTERNMATCH_H
 
     typedef enum {
+        COND,
         B,
         BR
     } branchPattern;
+
+    typedef enum {
+        STR,
+        LDL
+    } dataTransferPattern;
 
     typedef enum {
         SHIFT_IMM,
@@ -39,5 +45,6 @@
 
     char *getKeyPattern(keyPattern key);
     char *getDpPattern(dpPattern key);
+    char *getDataTransferPattern(dataTransferPattern key);
     char *getBranchPattern(branchPattern key);
 #endif //ARMV8_27_PATTERNMATCH_H

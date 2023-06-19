@@ -39,8 +39,6 @@ void openAssemblyEditor(void) {
     system("open editor.s");
 }
 
-// ee
-
 bool compile(void) {
     if (!getEditorExists()) {
         printf("'editor.s' not found.\n");
@@ -70,7 +68,7 @@ void run(void) {
     argv[1] = "output.bin";
 
     printf("----RESULT----\n\n");
-    emulate(argc, argv, false);
+    emulate(argc, argv, false, NULL);
     free(argv);
 }
 
@@ -80,7 +78,9 @@ void debug(void) {
     argv[0] = "./emulate";
     argv[1] = "output.bin";
 
-    emulate(argc, argv, true);
+    char **assemblyArray = loadAssemblyFromFile("editor.s");
+
+    emulate(argc, argv, true, assemblyArray);
     free(argv);
 }
 
