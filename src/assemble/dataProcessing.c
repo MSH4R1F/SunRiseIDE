@@ -1,13 +1,9 @@
-//
-// Created by Faraz Malik on 18/06/2023.
-//
-
 #include "dataProcessing.h"
 
 #include "tokenUtils.h"
 #include "key.h"
 
-// private function declarations
+/// Private function declarations
 static char *getShift(char *opcode);
 static char *getImm(char *opcode);
 static uint32_t assembleMaddMsub(char *opcode, char **operands);
@@ -20,6 +16,7 @@ static uint32_t assembleMov(char *opcode, char **operands, int operandLength);
 static uint32_t assembleNegNegs(char *opcode, char **operands, int operandLength);
 static uint32_t assembleCmp(char *opcode, char **operands, int operandLength);
 
+/// Checks if the opcode refers to a data processing instruction
 bool isDataProcessing(char *opcode) {
     char *ops[] = {"add", "adds", "sub", "subs", "cmp", "cmn", "neg", "negs", "and", "ands",
                    "bic", "bics", "eor", "orr", "eon", "orn", "tst", "movk", "movn",
@@ -32,6 +29,7 @@ bool isDataProcessing(char *opcode) {
     return false;
 }
 
+/// Calls the correct helper function to return the binary representation for a data processing instruction
 uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength) {
     char *ops[] = {
             "add", "adds", "sub", "subs",
@@ -73,6 +71,7 @@ uint32_t assembleDataProcessing(char *opcode, char **operands, int operandLength
     return instruction;
 }
 
+/// Returns the shift as a string ("lsl" from input "lsl #12")
 static char *getShift(char *opcode) {
     char opcodeDefinite[strlen(opcode) + 1];
     for (int i = 0; i < strlen(opcode); i++) {
@@ -86,6 +85,7 @@ static char *getShift(char *opcode) {
     return createString(token);
 }
 
+/// Returns the immediate value as a string ("#12" from input "lsl #12")
 static char *getImm(char *opcode) {
     char opcodeDefinite[strlen(opcode) + 1];
     for (int i = 0; i < strlen(opcode); i++) {
@@ -99,6 +99,7 @@ static char *getImm(char *opcode) {
     return createString(rest);
 }
 
+/// Returns the binary instruction for a madd/msub instruction
 static uint32_t assembleMaddMsub(char *opcode, char **operands) {
     uint32_t sf = operands[0][0] == 'x' ? 1 : 0;
     uint32_t instruction = sf << 31;
@@ -111,6 +112,7 @@ static uint32_t assembleMaddMsub(char *opcode, char **operands) {
     return instruction;
 }
 
+/// Returns the binary instruction for a mul instruction
 static uint32_t assembleMultiply(char *opcode, char **operands) {
     char *zeroRegister = calloc(4, sizeof(char));
     zeroRegister[0] = operands[0][0];
@@ -120,6 +122,7 @@ static uint32_t assembleMultiply(char *opcode, char **operands) {
     return assembleMaddMsub(opcode, operands);
 }
 
+/// Returns the binary instruction for a wide move instruction
 static uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
     uint32_t sf = operands[0][0] == 'x' ? 1 : 0;
     uint32_t instruction = sf << 31;
@@ -141,6 +144,7 @@ static uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
     return instruction;
 }
 
+/// Returns the binary instruction for an arithmetic logic instruction
 static uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandLength) {
     char *ops[] = {"add", "adds", "sub", "subs"};
     uint32_t instruction = 0;
@@ -155,7 +159,6 @@ static uint32_t assembleArithmeticLogic(char *opcode, char **operands, int opera
     instruction |= opc << 29;  // opc bit
     if (operands[2][0] == '#') {  // Immediate instruction
         instruction |= 0b100 << 26; //bits 26 to 28
-//        instruction |= 1 << 28;  // set bit 28 for "100"
         instruction |= 0b010 << 23;  // set bits 25:23 for "010"
         if (operandLength == 4) {
             if (operands[3][5] == '1') {
@@ -193,6 +196,7 @@ static uint32_t assembleArithmeticLogic(char *opcode, char **operands, int opera
     return instruction;
 }
 
+/// Returns the binary instruction for a bit logic instruction
 static uint32_t assembleBitLogic(char *opcode, char **operands, int operandLength) {
     uint32_t shift = 0;
     uint32_t operand = 0;
@@ -233,6 +237,7 @@ static uint32_t assembleBitLogic(char *opcode, char **operands, int operandLengt
     return instruction;
 }
 
+/// Returns the binary instruction for a tst instruction
 static uint32_t assembleTst(char *opcode, char **operands, int operandLength) {
     char *zeroRegister = calloc(4, sizeof(char));
     zeroRegister[0] = operands[0][0];
@@ -252,6 +257,7 @@ static uint32_t assembleTst(char *opcode, char **operands, int operandLength) {
     return assembleBitLogic("ands", newOperands, 4);
 }
 
+/// Returns the binary instruction for a mov instruction
 static uint32_t assembleMov(char *opcode, char **operands, int operandLength) {
     char *shiftString = "lsl #0";
     if (operandLength == 3) {
@@ -262,6 +268,7 @@ static uint32_t assembleMov(char *opcode, char **operands, int operandLength) {
     return assembleBitLogic(opcode, newOps, 4);
 }
 
+/// Returns the binary instruction for a neg/negs instruction
 static uint32_t assembleNegNegs(char *opcode, char **operands, int operandLength) {
     char *zeroRegister = calloc(4, sizeof(char));
     zeroRegister[0] = operands[0][0];
@@ -286,6 +293,7 @@ static uint32_t assembleNegNegs(char *opcode, char **operands, int operandLength
     return assembleArithmeticLogic(newOpcode, newOperands, operandLength + 1);
 }
 
+/// Returns the binary instruction for a cmp instruction
 static uint32_t assembleCmp(char *opcode, char **operands, int operandLength) {
     char *zeroRegister = calloc(4, sizeof(char));
     zeroRegister[0] = operands[0][0];

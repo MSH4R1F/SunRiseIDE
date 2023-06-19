@@ -1,4 +1,3 @@
-
 #include "assemble.h"
 
 #include "../general/memory.h"
@@ -11,10 +10,11 @@
 #include "dataTransfer.h"
 #include "directive.h"
 
-// private function declarations
+/// Private function declarations
 static bool isVoid(char *opcode);
 static void runAssemble(char **assemblyArray, uint8_t *memoryArray, char *filename);
 
+/// Loads the assembly file into an array, allocates memory, and executes the run function
 int assemble(int argc, char **argv) {
     char **assemblyArray;
     char *outputFile;
@@ -34,10 +34,12 @@ int assemble(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
+/// Checks if the instruction is a nop
 static bool isVoid(char *opcode) {
     return strcmp(opcode, "nop") == 0;
 }
 
+/// Converts each line of the assembly file into its binary equivalent, then writes it to a file
 static void runAssemble(char **assemblyArray, uint8_t *memoryArray, char *filename) {
     LabelAddressMap **labelMap = allocateLabelMap();
     computeLabelMap(assemblyArray, labelMap);

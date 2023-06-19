@@ -1,12 +1,8 @@
-//
-// Created by Faraz Malik on 18/06/2023.
-//
-
 #include "dataTransfer.h"
 
 #include "key.h"
 
-// private function declarations
+/// Private function declarations
 static char *removeLastLetter(char* string);
 static uint32_t assembleLoadLiteral(char **operands, long long currentAddress, uint32_t sf, uint32_t destReg, LabelAddressMap **labelMap);
 static uint32_t assemblePostIndex(char **operands, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType);
@@ -14,10 +10,12 @@ static uint32_t assemblePreIndex(char *simmOffset, uint32_t destReg, uint32_t sf
 static uint32_t assembleUnsignedOffset(char *immOffset, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType);
 static uint32_t assembleRegisterOffset(uint32_t destReg, uint32_t offsetReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType);
 
+/// Checks if an opcode refers to a data transfer instruction
 bool isDataTransfer(char *opcode) {
     return strcmp(opcode, "ldr") == 0 || strcmp(opcode, "str") == 0;
 }
 
+/// Calls the correct helper function to return the binary representation for a data transfer instruction
 uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, long long currentAddress, LabelAddressMap **labelMap) {
     uint32_t destReg = encodeRegister(operands[0]);
     uint32_t sf = operands[0][0] == 'w' ? 0 : 1;
@@ -59,6 +57,7 @@ uint32_t assembleDataTransfer(char *opcode, char **operands, int operandLength, 
     return instruction;
 }
 
+/// Helper function which removes the last letter of a string
 static char *removeLastLetter(char* string) {
     char *strPointer = malloc(strlen(string) * sizeof(char));
     for (int i = 0; i < strlen(string) - 1; i++) {
@@ -68,6 +67,7 @@ static char *removeLastLetter(char* string) {
     return strPointer;
 }
 
+/// Returns the binary instruction for a load literal assembly instruction
 static uint32_t assembleLoadLiteral(char **operands, long long currentAddress, uint32_t sf, uint32_t destReg, LabelAddressMap **labelMap) {
     uint32_t instruction = 0x0;                                                         //left-most bit is constant
     instruction |= (sf << 30);                                                                //sf bit
@@ -78,6 +78,7 @@ static uint32_t assembleLoadLiteral(char **operands, long long currentAddress, u
     return instruction;
 }
 
+/// Returns the binary instruction for a post-index data transfer instruction
 static uint32_t assemblePostIndex(char **operands, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
     uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
     instruction |= (sf << 30);                              //sf bit
@@ -91,6 +92,7 @@ static uint32_t assemblePostIndex(char **operands, uint32_t destReg, uint32_t sf
     return instruction;
 }
 
+/// Returns the binary instruction for a pre-index data transfer instruction
 static uint32_t assemblePreIndex(char *simmOffset, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
     uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
     instruction |= (sf << 30);                              //sf bit
@@ -104,6 +106,7 @@ static uint32_t assemblePreIndex(char *simmOffset, uint32_t destReg, uint32_t sf
     return instruction;
 }
 
+/// Returns the binary instruction for an unsigned offset data transfer instruction
 static uint32_t assembleUnsignedOffset(char *immOffset, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
     uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
     instruction |= (sf << 30);                              //sf bit
@@ -121,6 +124,7 @@ static uint32_t assembleUnsignedOffset(char *immOffset, uint32_t destReg, uint32
     return instruction;
 }
 
+/// Returns the binary instruction for a register offset data transfer instruction
 static uint32_t assembleRegisterOffset(uint32_t destReg, uint32_t offsetReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
     uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
     instruction |= (sf << 30);                              //sf bit

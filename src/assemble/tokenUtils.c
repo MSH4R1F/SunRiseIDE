@@ -1,9 +1,6 @@
-//
-// Created by Faraz Malik on 17/06/2023.
-//
-
 #include "tokenUtils.h"
 
+/// Returns the opcode from a given line of assembly
 char *extractOpcode(char *instruction) {
     char *line_copy = strdup(instruction);
     char *opcode = strtok(line_copy, " ");
@@ -14,6 +11,7 @@ char *extractOpcode(char *instruction) {
     return opcode;
 }
 
+/// Returns the operands from a line of assembly as a single string
 char *getOperands(char *opcode) {
     char opcodeDefinite[strlen(opcode) + 1];
     for (int i = 0; i < strlen(opcode); i++) {
@@ -26,6 +24,7 @@ char *getOperands(char *opcode) {
     return createString(rest);
 }
 
+/// Splits the single string of operands into an array of operands, split by comma
 char **extractOperands(char *instruction) {
     char *line_copy = strdup(instruction);
     char *operands = strtok(line_copy, " ");
@@ -44,6 +43,7 @@ char **extractOperands(char *instruction) {
     return splitOperands;
 }
 
+/// A helper function which creates a copy of a string on the heap
 char *createString(char *str) {
     char *heapString = malloc(strlen(str) + 1);
     if (str == NULL) {

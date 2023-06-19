@@ -1,23 +1,20 @@
-//
-// Created by Faraz Malik on 17/06/2023.
-//
-
 #include "branch.h"
 
 #include "key.h"
 #include "tokenUtils.h"
 
-// private functions declaration
+/// Private functions declaration
 static char *getBranchCondition(char *opcode);
 static uint32_t assembleBranchConditional(char *condition, char *literal, long long currentAddress, LabelAddressMap **labelMap);
 static uint32_t assembleBranchUnconditional(char *literal, long long currentAddress, LabelAddressMap **labelMap);
 static uint32_t assembleBranchRegister(char *registerName);
 
-
+/// Checks if the given opcode refers to a branch instruction
 bool isBranch(char *opcode) {
     return (strcmp(opcode, "b") == 0 || strcmp(opcode, "br") == 0 || strstr(opcode, "b."));
 }
 
+/// Calls the correct helper function to return the binary representation for a branch instruction
 uint32_t assembleBranch(char *opcode, char **operands, long long currentAddress, LabelAddressMap **labelMap) {
     if (strstr(opcode, ".")) {
         return assembleBranchConditional(getBranchCondition(opcode), operands[0], currentAddress, labelMap);
@@ -30,6 +27,7 @@ uint32_t assembleBranch(char *opcode, char **operands, long long currentAddress,
     }
 }
 
+/// Returns the binary instruction for a branch conditional instruction
 static uint32_t assembleBranchConditional(char *condition, char *literal, long long currentAddress, LabelAddressMap **labelMap) {
     uint32_t instruction = 0;
 
@@ -58,6 +56,7 @@ static uint32_t assembleBranchConditional(char *condition, char *literal, long l
     return instruction;
 }
 
+/// Returns the binary instruction for an unconditional branch instruction
 static uint32_t assembleBranchUnconditional(char *literal, long long currentAddress, LabelAddressMap **labelMap) {
     uint32_t instruction = 0;
 
@@ -70,6 +69,7 @@ static uint32_t assembleBranchUnconditional(char *literal, long long currentAddr
     return instruction;
 }
 
+/// Returns the binary instruction for a branch register instruction
 static uint32_t assembleBranchRegister(char *registerName) {
     uint32_t instruction = 0;
 
@@ -80,6 +80,7 @@ static uint32_t assembleBranchRegister(char *registerName) {
     return instruction;
 }
 
+/// Returns the condition as a string ("ne" from "b.ne")
 static char *getBranchCondition(char *opcode) {
     char opcodeDefinite[8];
     int i = 0;
