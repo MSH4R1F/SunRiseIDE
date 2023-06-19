@@ -27,7 +27,7 @@ uint32_t assembleBranch(char *opcode, char **operands, long long currentAddress,
     }
 }
 
-/// Returns the binary instruction for a branch conditional instruction
+/// Returns the binary encoding for a branch conditional instruction
 static uint32_t assembleBranchConditional(char *condition, char *literal, long long currentAddress, LabelAddressMap **labelMap) {
     uint32_t instruction = 0;
 
@@ -56,7 +56,7 @@ static uint32_t assembleBranchConditional(char *condition, char *literal, long l
     return instruction;
 }
 
-/// Returns the binary instruction for an unconditional branch instruction
+/// Returns the binary encoding for an unconditional branch instruction
 static uint32_t assembleBranchUnconditional(char *literal, long long currentAddress, LabelAddressMap **labelMap) {
     uint32_t instruction = 0;
 
@@ -69,7 +69,7 @@ static uint32_t assembleBranchUnconditional(char *literal, long long currentAddr
     return instruction;
 }
 
-/// Returns the binary instruction for a branch register instruction
+/// Returns the binary encoding for a branch register instruction
 static uint32_t assembleBranchRegister(char *registerName) {
     uint32_t instruction = 0;
 

@@ -67,7 +67,7 @@ static char *removeLastLetter(char* string) {
     return strPointer;
 }
 
-/// Returns the binary instruction for a load literal assembly instruction
+/// Returns the binary encoding for a load literal assembly instruction
 static uint32_t assembleLoadLiteral(char **operands, long long currentAddress, uint32_t sf, uint32_t destReg, LabelAddressMap **labelMap) {
     uint32_t instruction = 0x0;                                                         //left-most bit is constant
     instruction |= (sf << 30);                                                                //sf bit
@@ -78,7 +78,7 @@ static uint32_t assembleLoadLiteral(char **operands, long long currentAddress, u
     return instruction;
 }
 
-/// Returns the binary instruction for a post-index data transfer instruction
+/// Returns the binary encoding for a post-index data transfer instruction
 static uint32_t assemblePostIndex(char **operands, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
     uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
     instruction |= (sf << 30);                              //sf bit
@@ -92,7 +92,7 @@ static uint32_t assemblePostIndex(char **operands, uint32_t destReg, uint32_t sf
     return instruction;
 }
 
-/// Returns the binary instruction for a pre-index data transfer instruction
+/// Returns the binary encoding for a pre-index data transfer instruction
 static uint32_t assemblePreIndex(char *simmOffset, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
     uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
     instruction |= (sf << 30);                              //sf bit
@@ -106,7 +106,7 @@ static uint32_t assemblePreIndex(char *simmOffset, uint32_t destReg, uint32_t sf
     return instruction;
 }
 
-/// Returns the binary instruction for an unsigned offset data transfer instruction
+/// Returns the binary encoding for an unsigned offset data transfer instruction
 static uint32_t assembleUnsignedOffset(char *immOffset, uint32_t destReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
     uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
     instruction |= (sf << 30);                              //sf bit
@@ -124,7 +124,7 @@ static uint32_t assembleUnsignedOffset(char *immOffset, uint32_t destReg, uint32
     return instruction;
 }
 
-/// Returns the binary instruction for a register offset data transfer instruction
+/// Returns the binary encoding for a register offset data transfer instruction
 static uint32_t assembleRegisterOffset(uint32_t destReg, uint32_t offsetReg, uint32_t sf, uint32_t srcReg, uint32_t instructionType) {
     uint32_t instruction = 0x1 << 31;                       //left-most bit is constant
     instruction |= (sf << 30);                              //sf bit

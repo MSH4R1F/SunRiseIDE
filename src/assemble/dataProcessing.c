@@ -99,7 +99,7 @@ static char *getImm(char *opcode) {
     return createString(rest);
 }
 
-/// Returns the binary instruction for a madd/msub instruction
+/// Returns the binary encoding for a madd/msub instruction
 static uint32_t assembleMaddMsub(char *opcode, char **operands) {
     uint32_t sf = operands[0][0] == 'x' ? 1 : 0;
     uint32_t instruction = sf << 31;
@@ -112,7 +112,7 @@ static uint32_t assembleMaddMsub(char *opcode, char **operands) {
     return instruction;
 }
 
-/// Returns the binary instruction for a mul instruction
+/// Returns the binary encoding for a mul instruction
 static uint32_t assembleMultiply(char *opcode, char **operands) {
     char *zeroRegister = calloc(4, sizeof(char));
     zeroRegister[0] = operands[0][0];
@@ -122,7 +122,7 @@ static uint32_t assembleMultiply(char *opcode, char **operands) {
     return assembleMaddMsub(opcode, operands);
 }
 
-/// Returns the binary instruction for a wide move instruction
+/// Returns the binary encoding for a wide move instruction
 static uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
     uint32_t sf = operands[0][0] == 'x' ? 1 : 0;
     uint32_t instruction = sf << 31;
@@ -144,7 +144,7 @@ static uint32_t assembleMove(char *opcode, char **operands, int operandLength) {
     return instruction;
 }
 
-/// Returns the binary instruction for an arithmetic logic instruction
+/// Returns the binary encoding for an arithmetic logic instruction
 static uint32_t assembleArithmeticLogic(char *opcode, char **operands, int operandLength) {
     char *ops[] = {"add", "adds", "sub", "subs"};
     uint32_t instruction = 0;
@@ -196,7 +196,7 @@ static uint32_t assembleArithmeticLogic(char *opcode, char **operands, int opera
     return instruction;
 }
 
-/// Returns the binary instruction for a bit logic instruction
+/// Returns the binary encoding for a bit logic instruction
 static uint32_t assembleBitLogic(char *opcode, char **operands, int operandLength) {
     uint32_t shift = 0;
     uint32_t operand = 0;
@@ -237,7 +237,7 @@ static uint32_t assembleBitLogic(char *opcode, char **operands, int operandLengt
     return instruction;
 }
 
-/// Returns the binary instruction for a tst instruction
+/// Returns the binary encoding for a tst instruction
 static uint32_t assembleTst(char *opcode, char **operands, int operandLength) {
     char *zeroRegister = calloc(4, sizeof(char));
     zeroRegister[0] = operands[0][0];
@@ -257,7 +257,7 @@ static uint32_t assembleTst(char *opcode, char **operands, int operandLength) {
     return assembleBitLogic("ands", newOperands, 4);
 }
 
-/// Returns the binary instruction for a mov instruction
+/// Returns the binary encoding for a mov instruction
 static uint32_t assembleMov(char *opcode, char **operands, int operandLength) {
     char *shiftString = "lsl #0";
     if (operandLength == 3) {
@@ -268,7 +268,7 @@ static uint32_t assembleMov(char *opcode, char **operands, int operandLength) {
     return assembleBitLogic(opcode, newOps, 4);
 }
 
-/// Returns the binary instruction for a neg/negs instruction
+/// Returns the binary encoding for a neg/negs instruction
 static uint32_t assembleNegNegs(char *opcode, char **operands, int operandLength) {
     char *zeroRegister = calloc(4, sizeof(char));
     zeroRegister[0] = operands[0][0];
@@ -293,7 +293,7 @@ static uint32_t assembleNegNegs(char *opcode, char **operands, int operandLength
     return assembleArithmeticLogic(newOpcode, newOperands, operandLength + 1);
 }
 
-/// Returns the binary instruction for a cmp instruction
+/// Returns the binary encoding for a cmp instruction
 static uint32_t assembleCmp(char *opcode, char **operands, int operandLength) {
     char *zeroRegister = calloc(4, sizeof(char));
     zeroRegister[0] = operands[0][0];

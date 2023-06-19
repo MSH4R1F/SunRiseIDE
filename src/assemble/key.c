@@ -1,6 +1,6 @@
 #include "key.h"
 
-/// Returns the integer representation of a register (24 for input R24)
+/// Returns the binary encoding of a register (24 for input R24)
 uint32_t encodeRegister(char *operand) {
     if (strcmp(operand, "SP") == 0 || operand[1] == 'z') {
         return 0b11111;
@@ -10,7 +10,7 @@ uint32_t encodeRegister(char *operand) {
     }
 }
 
-/// Returns the integer representation for a simm (-34 for input #-34)
+/// Returns the binary encoding for a simm (-34 for input #-34)
 uint32_t encodeSimm(char *operand, bool hasHash) {
     if (hasHash) {
         operand++;
@@ -22,12 +22,12 @@ uint32_t encodeSimm(char *operand, bool hasHash) {
     }
 }
 
-/// Returns the integer representation for an imm (34 for input #34)
+/// Returns the binary encoding for an imm (34 for input #34)
 uint32_t encodeImm(char *operand, bool hasHash) {
     return encodeSimm(operand, hasHash);
 }
 
-/// Returns the integer representation for a shift depending on its type
+/// Returns the binary encoding for a shift depending on its type
 uint32_t encodeShift(char *operand) {
     if (strcmp(operand, "lsl") == 0) {
         return 0;
@@ -40,7 +40,7 @@ uint32_t encodeShift(char *operand) {
     }
 }
 
-/// Calculates and returns the offset based on the literal provided
+/// Calculates and returns the binary-encoded offset based on the literal provided
 long long encodeLiteralToOffset(char *literal, long long currentAddress, LabelAddressMap **labelMap) {
     long long jumpAddress;
     if (mapContainsLabel(literal, labelMap)) {
