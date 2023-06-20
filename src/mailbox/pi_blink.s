@@ -50,9 +50,9 @@ on_wait_read:
 on_read_response:
     ldr w1, [w0, #0]
 
-movz w29, #0x069, lsl #16
+movz w29, #0x049, lsl #16
 on_light_delay:
-    subs w29, w29, #1
+    sub w29, w29, #1
     cmp w29, #0
     b.ne on_light_delay
 
@@ -100,9 +100,9 @@ off_wait_read:
 
 ldr w1, [w0, #0]
 
-movz w29, #0x0069, lsl #16
+movz w29, #0x049, lsl #16
 off_light_delay:
-    subs w29, w29, #1
+    sub w29, w29, #1
     cmp w29, #0
     b.ne off_light_delay
 
