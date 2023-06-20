@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-
+#include <stdint.h>
 #ifndef ARMV8_27_ASSEMBLEFILEUTILS_H
     #define ARMV8_27_ASSEMBLEFILEUTILS_H
 

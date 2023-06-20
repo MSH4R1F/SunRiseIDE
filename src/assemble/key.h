@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-
+#include <stdint.h>
 #include "../general/labelMap.h"
 
 #ifndef ARMV8_27_KEY_H

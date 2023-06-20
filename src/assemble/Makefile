@@ -1,4 +1,4 @@
-# Standard Declarations for mfbuild
+#Standard Declarations for mfbuild
 
 CC	=	gcc
 CFLAGS	=	-g -Wall
