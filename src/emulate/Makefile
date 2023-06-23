@@ -7,27 +7,30 @@ EXECS	=	emulate
 
 all:	$(EXECS)
 
-emulate.o:	emulate.c fileUtils.h memory.h registers.h bitwiseShift.h dataProcessingImm.h dataProcessingReg.h singleDataTransfer.h branch.h
+main.o: main.c emulate.h
 
-fileUtils.o:	fileUtils.c fileUtils.h memory.h constants.h
+emulate.o:	emulate.c emulateFileUtils.h ../general/memory.h ../general/terminalColor.h registers.h bitwiseShift.h dataProcessingImm.h dataProcessingReg.h singleDataTransfer.h branch.h
 
-memory.o:	memory.c memory.h constants.h
+emulateFileUtils.o:	emulateFileUtils.c emulateFileUtils.h ../general/memory.h ../general/constants.h
+
+../general/memory.o:	../general/memory.c ../general/memory.h ../general/constants.h
+../general/terminalColor.o:  ../general/terminalColor.c ../general/terminalColor.h
 
 registers.o:	registers.c registers.h
 
 bitwiseShift.o:	bitwiseShift.c bitwiseShift.h
 
-dataProcessingImm.o:	dataProcessingImm.c dataProcessingImm.h fileUtils.h flags.h dataProcessing.h
+dataProcessingImm.o:	dataProcessingImm.c dataProcessingImm.h emulateFileUtils.h flags.h dataProcessing.h
 
-dataProcessingReg.o:	dataProcessingReg.c dataProcessingReg.h bitwiseShift.h memory.h flags.h dataProcessing.h
+dataProcessingReg.o:	dataProcessingReg.c dataProcessingReg.h bitwiseShift.h ../general/memory.h flags.h dataProcessing.h
 
-singleDataTransfer.o:	singleDataTransfer.c singleDataTransfer.h memory.h
+singleDataTransfer.o:	singleDataTransfer.c singleDataTransfer.h ../general/memory.h
 
 branch.o:	branch.c branch.h
 
 flags.o:	flags.c flags.h
 
-OBJS	=	 emulate.o fileUtils.o memory.o registers.o bitwiseShift.o dataProcessingImm.o dataProcessingReg.o singleDataTransfer.o branch.o flags.o
+OBJS	= main.o emulate.o emulateFileUtils.o ../general/memory.o ../general/terminalColor.o registers.o bitwiseShift.o dataProcessingImm.o dataProcessingReg.o singleDataTransfer.o branch.o flags.o
 
 clean:
 	/bin/rm -f $(EXECS) $(OBJS) core a.out .nfs*
