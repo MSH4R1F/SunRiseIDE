@@ -8,8 +8,8 @@
 #include <string.h>
 #include <regex.h>
 
-#include "../emulate/emulate.h"
-#include "../assemble/assemble.h"
+#include "../emulator/emulate.h"
+#include "../assembler/assemble.h"
 #include "../general/labelMap.h"
 #include "../general/assembleFileUtils.h"
 #include "../general/terminalColor.h"

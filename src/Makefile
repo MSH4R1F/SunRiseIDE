@@ -9,8 +9,8 @@ emulate:
 	mv emulator/emulate .
 
 clean:
-	$(MAKE) -C assemble clean
-	$(MAKE) -C emulate clean
+	$(MAKE) -C assembler clean
+	$(MAKE) -C emulator clean
 	rm -f assemble emulate
 
 .PHONY: all assemble emulate clean

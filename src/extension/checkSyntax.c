@@ -9,8 +9,8 @@
 #include "../general/assembleFileUtils.h"
 #include "../general/labelMap.h"
 
-#include "../assemble/branch.h"
-#include "../assemble/tokenUtils.h"
+#include "../assembler/branch.h"
+#include "../assembler/tokenUtils.h"
 
 #include "patternMatch.h"
 
